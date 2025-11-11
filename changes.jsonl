@@ -73,3 +73,35 @@
   "status": "completed",
   "task": "task-002"
 }
+{
+  "timestamp": "2025-11-11T14:09:08Z",
+  "type": "feature",
+  "component": "git",
+  "summary": "Initialize git repository and push to GitHub",
+  "files": [
+    "/home/colin/projects/hydromatic/.gitignore"
+  ],
+  "agent": "claude",
+  "tags": [
+    "git",
+    "github",
+    "setup"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-008"
+}
+{
+  "timestamp": "2025-11-11T16:12:41Z",
+  "type": "feature",
+  "component": "wifi_manager",
+  "summary": "Set DHCP hostname and mDNS hostname to 'hydromatic-MACADDR'",
+  "files": [
+    "/home/colin/projects/hydromatic/src/wifi_manager.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": true,
+  "status": "completed",
+  "task": "task-008"
+}

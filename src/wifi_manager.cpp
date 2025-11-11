@@ -224,11 +224,20 @@ void WiFiManager::updateConnectionState() {
                   getLocalIP().c_str(), getSignalStrength());
         attempt_counter = 0;
 
+        // Get MAC address for hostname suffix
+        uint8_t mac[6];
+        WiFi.macAddress(mac);
+        char hostname[33];
+        snprintf(hostname, sizeof(hostname), "%s-%02X%02X%02X", ap_ssid_prefix, mac[3], mac[4], mac[5]);
+
+        // Set DHCP hostname (what shows up on router)
+        WiFi.setHostname(hostname);
+
         // Initialize mDNS for hostname resolution
-        if (!MDNS.begin("hydromatic")) {
+        if (!MDNS.begin(hostname)) {
           logEvent("ERROR: mDNS initialization failed");
         } else {
-          logEvent("mDNS initialized - hostname: hydromatic.local");
+          logEventF("mDNS initialized - hostname: %s.local", hostname);
         }
       }
       // Already connected, don't log repeatedly

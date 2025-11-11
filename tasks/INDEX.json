@@ -1,0 +1,137 @@
+{
+  "generated": "2025-11-11T17:33:34Z",
+  "open_count": 6,
+  "completed_count": 3,
+  "open": [
+    {
+      "id": "task-003",
+      "title": "Implement Time Manager module",
+      "priority": "critical",
+      "status": "open",
+      "keywords": [
+        "time",
+        "ntp",
+        "phase-1",
+        "critical"
+      ],
+      "created": "2025-11-11T08:36:57Z",
+      "updated": "2025-11-11T08:36:57Z"
+    },
+    {
+      "id": "task-004",
+      "title": "Implement OTA Manager module",
+      "priority": "critical",
+      "status": "open",
+      "keywords": [
+        "ota",
+        "firmware",
+        "updates",
+        "phase-1",
+        "critical"
+      ],
+      "created": "2025-11-11T08:37:32Z",
+      "updated": "2025-11-11T08:37:32Z"
+    },
+    {
+      "id": "task-005",
+      "title": "Create config.json with WiFi, Time, and OTA settings",
+      "priority": "high",
+      "status": "open",
+      "keywords": [
+        "configuration",
+        "json",
+        "phase-1"
+      ],
+      "created": "2025-11-11T08:46:59Z",
+      "updated": "2025-11-11T08:46:59Z"
+    },
+    {
+      "id": "task-006",
+      "title": "Integrate WiFi, Time, and OTA managers in main.cpp",
+      "priority": "high",
+      "status": "open",
+      "keywords": [
+        "integration",
+        "main",
+        "phase-1"
+      ],
+      "created": "2025-11-11T08:47:08Z",
+      "updated": "2025-11-11T08:47:08Z"
+    },
+    {
+      "id": "task-007",
+      "title": "Create Logger module for debug output",
+      "priority": "high",
+      "status": "open",
+      "keywords": [
+        "logging",
+        "phase-1"
+      ],
+      "created": "2025-11-11T08:47:14Z",
+      "updated": "2025-11-11T08:47:14Z"
+    },
+    {
+      "id": "task-009",
+      "title": "Fix ESP32 hostname to show 'hydromatic-*' on network",
+      "priority": "high",
+      "status": "in-progress",
+      "keywords": [
+        "networking",
+        "hostname",
+        "esp32",
+        "mdns",
+        "dhcp",
+        "wifi"
+      ],
+      "created": "2025-11-11T15:13:12Z",
+      "updated": "2025-11-11T17:16:00Z"
+    }
+  ],
+  "completed": [
+    {
+      "id": "task-001",
+      "title": "Test task - Analyze source codebase and create implementation plan",
+      "priority": "critical",
+      "status": "completed",
+      "keywords": [
+        "planning",
+        "analysis",
+        "specification",
+        "phase-1"
+      ],
+      "created": "2025-11-11T00:00:00Z",
+      "updated": "2025-11-11T09:02:27Z",
+      "completed_date": "2025-11-11T09:02:27Z"
+    },
+    {
+      "id": "task-002",
+      "title": "Implement WiFi Manager module",
+      "priority": "critical",
+      "status": "completed",
+      "keywords": [
+        "wifi",
+        "networking",
+        "phase-1",
+        "critical"
+      ],
+      "created": "2025-11-11T08:36:28Z",
+      "updated": "2025-11-11T12:29:21Z",
+      "completed_date": "2025-11-11T12:29:21Z"
+    },
+    {
+      "id": "task-008",
+      "title": "Initialize git repository and push to GitHub",
+      "priority": "high",
+      "status": "completed",
+      "keywords": [
+        "git",
+        "github",
+        "version-control",
+        "setup"
+      ],
+      "created": "2025-11-11T12:31:50Z",
+      "updated": "2025-11-11T14:09:22Z",
+      "completed_date": "2025-11-11T14:09:22Z"
+    }
+  ]
+}

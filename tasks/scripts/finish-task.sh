@@ -67,3 +67,6 @@ rm -f "$TASK_FILE"
 echo "✓ Task completed: $TASK_ID"
 echo "  Status: completed"
 echo "  Moved to: tasks/completed/$TASK_ID.json"
+
+# Update the task index
+"$PROJECT_ROOT/tasks/scripts/update-index.sh" > /dev/null 2>&1

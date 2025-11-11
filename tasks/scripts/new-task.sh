@@ -71,9 +71,10 @@ if [ -z "$title" ] || [ -z "$priority" ] || [ -z "$description" ]; then
     exit 1
 fi
 
-# Find next task number
-last_num=$(ls "$TASKS_DIR"/task-*.json 2>/dev/null | sed 's/.*task-\([0-9]*\)\.json/\1/' | sort -n | tail -1)
-next_num=$(printf "%03d" $((${last_num:-0} + 1)))
+# Find next task number (check BOTH open and completed folders)
+# Use 10# prefix to force decimal interpretation and avoid octal conversion of numbers with leading zeros
+last_num=$(find "$PROJECT_ROOT/tasks"/{open,completed} -name "task-*.json" 2>/dev/null | sed 's/.*task-\([0-9]*\)\.json/\1/' | sort -n | tail -1)
+next_num=$(printf "%03d" $((10#${last_num:-0} + 1)))
 
 task_file="$TASKS_DIR/task-$next_num.json"
 
@@ -111,7 +112,25 @@ json=$(jq -n \
     tags: $tags
   }')
 
-# Write task file
-echo "$json" > "$task_file"
+# Write task file using jq to ensure valid JSON
+echo "$json" | jq . > "$task_file"
+
+# Update index file by adding to open array
+INDEX_FILE="$PROJECT_ROOT/tasks/INDEX.json"
+if [ -f "$INDEX_FILE" ]; then
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    new_task=$(jq -c '{
+        id: .id,
+        title: .title,
+        priority: .priority,
+        status: .status,
+        keywords: .tags,
+        created: .created,
+        updated: .updated
+    }' "$task_file")
+    jq --arg ts "$timestamp" --argjson task "$new_task" \
+       '.generated = $ts | .open_count += 1 | .open += [$task]' \
+       "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
+fi
 
 echo "task-$next_num"

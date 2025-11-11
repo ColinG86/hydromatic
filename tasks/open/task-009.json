@@ -1,0 +1,62 @@
+{
+  "id": "task-009",
+  "created": "2025-11-11T15:13:12Z",
+  "updated": "2025-11-11T17:16:00Z",
+  "title": "Fix ESP32 hostname to show 'hydromatic-*' on network",
+  "status": "in-progress",
+  "priority": "high",
+  "description": "Device currently shows as 'esp32-26CC1C' on router DHCP instead of 'hydromatic-26CC1C'. Need to implement proper DHCP hostname setting or mDNS hostname registration so device appears with hydromatic prefix on the network.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "Device shows as 'hydromatic-*' hostname on router DHCP client list",
+    "Device can be pinged by 'hydromatic-*.local' mDNS hostname",
+    "Hostname persists across reboots"
+  ],
+  "investigation": [
+    {
+      "timestamp": "2025-11-11T16:00:00Z",
+      "action": "Modified wifi_manager.cpp to set DHCP and mDNS hostnames with MAC suffix",
+      "finding": "Added WiFi.setHostname() and MDNS.begin() calls in updateConnectionState() function with dynamic MAC-based hostname generation"
+    },
+    {
+      "timestamp": "2025-11-11T17:00:00Z",
+      "action": "Firmware upload issues - device not booting new code",
+      "finding": "Initial upload appeared successful but device kept running old firmware. Root cause: serial output interference during bootloader handshake"
+    },
+    {
+      "timestamp": "2025-11-11T17:10:00Z",
+      "action": "Erased flash, recompiled, uploaded with BOOT button held",
+      "finding": "New firmware now boots successfully. Device currently in AP mode (no WiFi credentials configured). Hostname code is in place but NOT VERIFIED on actual network."
+    }
+  ],
+  "solution": {
+    "approach": "Modified WiFiManager::updateConnectionState() to dynamically set DHCP and mDNS hostnames when connecting to WiFi network",
+    "files_modified": [
+      "/home/colin/projects/hydromatic/src/wifi_manager.cpp (lines ~227-241)"
+    ],
+    "changes": "Extracts MAC address during WiFi connection, creates hostname string 'hydromatic-XXXXXX' (last 3 bytes of MAC), calls WiFi.setHostname() for DHCP registration and MDNS.begin() for mDNS resolution"
+  },
+  "verification": {
+    "tested": false,
+    "test_date": "2025-11-11T17:16:00Z",
+    "test_results": "PARTIAL: New firmware boots correctly on erased flash. WiFiManager state machine operational. Code structure correct. MISSING VERIFICATION: Device currently in AP mode (no config.json exists). Cannot verify hostname appears on router DHCP or responds to mDNS queries. Need to: (1) provide WiFi credentials in config.json, (2) device connects to actual WiFi network, (3) verify hostname shows on router and responds to ping at hydromatic-MACADDR.local",
+    "status": "code-ready-needs-network-testing"
+  },
+  "blockers": [
+    "Need config.json with WiFi credentials to test hostname registration on actual network",
+    "Cannot verify DHCP hostname display without connected station mode",
+    "Cannot verify mDNS hostname without network connectivity"
+  ],
+  "related_tasks": [
+    "task-005"
+  ],
+  "tags": [
+    "networking",
+    "hostname",
+    "esp32",
+    "mdns",
+    "dhcp",
+    "wifi"
+  ],
+  "handoff_notes": "Code implementation complete. Firmware compiles and boots. Hostname registration logic in place at wifi_manager.cpp:227-241. Device MAC: cc:7b:5c:26:cc:1c. Expected hostname when connected: hydromatic-26CC1C. Currently in AP mode at 192.168.4.1. Serial: 115200 baud, 8N1, no flow control."
+}
