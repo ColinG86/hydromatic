@@ -1,0 +1,34 @@
+# Build artifacts
+/target/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies
+Cargo.lock
+
+# Test outputs
+*.log
+
+# PlatformIO
+.pio/
+.platformio/
+build/
+dist/
+.env
+
+# Build logs
+upload.log
+build.log

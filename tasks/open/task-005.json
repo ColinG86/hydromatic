@@ -1,0 +1,29 @@
+{
+  "id": "task-005",
+  "created": "2025-11-11T08:46:59Z",
+  "updated": "2025-11-11T08:46:59Z",
+  "title": "Create config.json with WiFi, Time, and OTA settings",
+  "status": "open",
+  "priority": "high",
+  "description": "Create initial /data/config.json with nested structure containing WiFi credentials (station/AP modes), NTP server, timezone, and OTA configuration. Include sensible defaults.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "config.json created in /data/config.json",
+    "WiFi section with station SSID/password, AP password, retry parameters",
+    "Time section with NTP server, timezone, sync timeout, confidence window",
+    "OTA section with enabled flag, port, hostname prefix",
+    "JSON structure is valid and well-formatted",
+    "Contains reasonable defaults for all settings",
+    "Tested: config loads without errors via ArduinoJson"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "configuration",
+    "json",
+    "phase-1"
+  ]
+}

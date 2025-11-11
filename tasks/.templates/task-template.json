@@ -1,0 +1,39 @@
+{
+  "id": "task-NNN",
+  "created": "2025-11-11T00:00:00Z",
+  "updated": "2025-11-11T00:00:00Z",
+  "title": "Brief, specific title of what needs to be done",
+  "status": "open",
+  "priority": "critical|high|medium|low",
+  "description": "Detailed description of what needs to be done and why. Include context and motivation.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "Criterion 1 - testable and verifiable",
+    "Criterion 2 - testable and verifiable",
+    "Criterion 3 - testable and verifiable"
+  ],
+  "investigation": [
+    {
+      "timestamp": "2025-11-11T00:00:00Z",
+      "action": "What was investigated or discovered",
+      "finding": "What was learned"
+    }
+  ],
+  "solution": {
+    "approach": "High-level approach to solving the problem",
+    "files_to_modify": [
+      "src/module.rs",
+      "tests/module_test.rs"
+    ],
+    "changes": "Description of changes made"
+  },
+  "verification": {
+    "tested": false,
+    "test_date": null,
+    "test_results": null,
+    "status": null
+  },
+  "blockers": [],
+  "related_tasks": [],
+  "tags": ["keyword", "category", "priority-level"]
+}

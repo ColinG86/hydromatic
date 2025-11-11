@@ -1,0 +1,33 @@
+{
+  "wifi": {
+    "credentials": [
+      {
+        "ssid": "WAP",
+        "password": "WetAssPussy69420"
+      },
+      {
+        "ssid": "Kyothong_flor4",
+        "password": "kyothong666"
+      }
+    ],
+    "ap": {
+      "password": "hydromatic_default",
+      "ssid_prefix": "hydromatic"
+    },
+    "connection_timeout_ms": 10000,
+    "reconnect_interval_ms": 5000,
+    "disconnection_threshold_ms": 60000,
+    "max_attempts_per_network": 5
+  },
+  "time": {
+    "ntp_server": "pool.ntp.org",
+    "timezone": "UTC0",
+    "sync_timeout_seconds": 5,
+    "confidence_window_hours": 24
+  },
+  "ota": {
+    "enabled": true,
+    "port": 3232,
+    "hostname_prefix": "hydromatic"
+  }
+}

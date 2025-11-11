@@ -1,0 +1,28 @@
+{
+  "id": "task-008",
+  "created": "2025-11-11T12:31:50Z",
+  "updated": "2025-11-11T12:32:46Z",
+  "title": "Initialize git repository and push to GitHub",
+  "status": "in-progress",
+  "priority": "high",
+  "description": "Create a git repository for the Hydromatic project, initialize with proper .gitignore, create initial commit with WiFiManager implementation, and push to a remote GitHub repository for version control and collaboration.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "Git repository initialized in project root",
+    "GitHub remote configured and working",
+    "Initial commit created with all source code",
+    "Repository pushed to remote successfully",
+    "README.md documents project overview and setup"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "git",
+    "github",
+    "version-control",
+    "setup"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "task-002",
+  "created": "2025-11-11T08:36:28Z",
+  "updated": "2025-11-11T12:29:21Z",
+  "title": "Implement WiFi Manager module",
+  "status": "completed",
+  "priority": "critical",
+  "description": "Create WiFiManager class with Station mode (primary) and AP mode (fallback). Load credentials from config.json. Track connection state and provide status queries.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "WiFiManager class created in src/wifi_manager.h/.cpp",
+    "Station mode connects to SSID in config.json",
+    "AP mode activates after 3 failed station attempts",
+    "State machine correctly transitions between connection states",
+    "Public interface implemented: begin(), isConnected(), getMode(), getLocalIP(), getMACAddress(), getSignalStrength()",
+    "Connection events logged",
+    "Tested: station mode connection, AP mode activation, AP mode client connection"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": {
+    "tested": true,
+    "test_date": "2025-11-11T12:29:21Z",
+    "test_results": "WiFiManager fully implemented and hardware-tested. Successfully connects to configured WiFi networks (tested on 'WAP' network at 192.168.0.4). Multiple credential support with priority ordering working. 5-attempt retry per network implemented and verified. 60-second disconnect detection with automatic fallback to AP mode confirmed operational. Clean logging without spam. mDNS hostname 'hydromatic.local' accessible from network (ping verified). All acceptance criteria and custom enhancements completed and tested.",
+    "status": "success"
+  },
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "wifi",
+    "networking",
+    "phase-1",
+    "critical"
+  ]
+}

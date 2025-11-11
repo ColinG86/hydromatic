@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-11-11T11:11:50Z",
+  "type": "feature",
+  "component": "wifi",
+  "summary": "Implemented WiFiManager with multiple credentials, 60s disconnect handling, and verbose logging",
+  "files": [
+    "/home/colin/projects/hydromatic/src/wifi_manager.h",
+    "/home/colin/projects/hydromatic/src/wifi_manager.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "wifi",
+    "networking",
+    "core"
+  ],
+  "tested": false,
+  "status": "completed",
+  "task": "task-002"
+}
+{
+  "timestamp": "2025-11-11T11:49:07Z",
+  "type": "fix",
+  "component": "wifi",
+  "summary": "Fixed repetitive logging spam - only log on state transitions, not every loop cycle",
+  "files": [
+    "/home/colin/projects/hydromatic/src/wifi_manager.cpp",
+    "/home/colin/projects/hydromatic/src/main.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "logging",
+    "debug"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-002"
+}
+{
+  "timestamp": "2025-11-11T12:23:40Z",
+  "type": "fix",
+  "component": "wifi",
+  "summary": "Fixed config path and SPIFFS initialization - WiFiManager now successfully loads credentials and connects to WiFi networks",
+  "files": [
+    "/home/colin/projects/hydromatic/src/main.cpp",
+    "/home/colin/projects/hydromatic/src/wifi_manager.h"
+  ],
+  "agent": "claude",
+  "tags": [
+    "spiffs",
+    "config",
+    "wifi-connection"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-002"
+}
+{
+  "timestamp": "2025-11-11T12:27:58Z",
+  "type": "feature",
+  "component": "wifi",
+  "summary": "Added mDNS hostname support - device accessible via hydromatic.local instead of dynamic IP",
+  "files": [
+    "/home/colin/projects/hydromatic/src/wifi_manager.h",
+    "/home/colin/projects/hydromatic/src/wifi_manager.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "mdns",
+    "hostname",
+    "network"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-002"
+}

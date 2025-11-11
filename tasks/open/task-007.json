@@ -1,0 +1,27 @@
+{
+  "id": "task-007",
+  "created": "2025-11-11T08:47:14Z",
+  "updated": "2025-11-11T08:47:14Z",
+  "title": "Create Logger module for debug output",
+  "status": "open",
+  "priority": "high",
+  "description": "Implement Logger class for consistent debug logging with timestamps. Must be available before other modules initialize. Simple version without file persistence for Phase 1.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "Logger class created in src/logger.h/.cpp",
+    "logDebug(), logInfo(), logWarning(), logError() methods",
+    "Timestamp included in all messages",
+    "Serial output for boot debugging",
+    "Public interface: begin(), log methods with format strings",
+    "Tested: all log levels output correctly with timestamps"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "logging",
+    "phase-1"
+  ]
+}

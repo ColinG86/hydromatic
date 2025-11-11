@@ -1,0 +1,28 @@
+{
+  "id": "task-006",
+  "created": "2025-11-11T08:47:08Z",
+  "updated": "2025-11-11T08:47:08Z",
+  "title": "Integrate WiFi, Time, and OTA managers in main.cpp",
+  "status": "open",
+  "priority": "high",
+  "description": "Update main.cpp with proper initialization order: Logger → WiFiManager → TimeManager → OTAManager. Add main loop integration for OTA.handle(). Ensure clean startup sequence.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "main.cpp updated with initialization calls in correct order",
+    "Logger.begin() called first",
+    "WiFiManager.begin() called before TimeManager and OTAManager",
+    "OTA.handle() called in main loop",
+    "Serial output shows boot sequence and module status",
+    "Tested: full boot sequence with all managers"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "integration",
+    "main",
+    "phase-1"
+  ]
+}

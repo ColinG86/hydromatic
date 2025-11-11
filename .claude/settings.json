@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/colin/projects/hydromatic/.claude/hooks/load-agents.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

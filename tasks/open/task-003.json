@@ -1,0 +1,31 @@
+{
+  "id": "task-003",
+  "created": "2025-11-11T08:36:57Z",
+  "updated": "2025-11-11T08:36:57Z",
+  "title": "Implement Time Manager module",
+  "status": "open",
+  "priority": "critical",
+  "description": "Create TimeManager class for NTP synchronization on boot, timezone support, and time confidence tracking. Handle offline operation gracefully.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "TimeManager class created in src/time_manager.h/.cpp",
+    "NTP sync on boot with 5 second timeout",
+    "Time confidence tracking (CONFIDENT/UNCONFIDENT states)",
+    "Timezone support via POSIX TZ string in config.json",
+    "Fallback to compile-time on NTP failure or no WiFi",
+    "Public interface: begin(), getTime(), getLocalTime(), isTimeConfident(), getLastSyncTime()",
+    "Time sync events logged",
+    "Tested: NTP sync with WiFi, fallback without WiFi, timezone conversion"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "time",
+    "ntp",
+    "phase-1",
+    "critical"
+  ]
+}
