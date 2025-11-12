@@ -161,3 +161,24 @@
   "status": "completed",
   "task": "task-009"
 }
+{
+  "timestamp": "2025-11-12T10:29:14Z",
+  "type": "feature",
+  "component": "architecture",
+  "summary": "Implemented FreeRTOS multi-tasking architecture with WiFiManager and main orchestration tasks",
+  "files": [
+    "/home/colin/projects/hydromatic/src/main.cpp",
+    "/home/colin/projects/hydromatic/src/freertos_tasks.h",
+    "/home/colin/projects/hydromatic/src/freertos_tasks.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "rtos",
+    "architecture",
+    "refactoring",
+    "foundation"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-013"
+}

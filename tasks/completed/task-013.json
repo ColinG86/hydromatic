@@ -1,0 +1,33 @@
+{
+  "id": "task-013",
+  "created": "2025-11-12T10:14:13Z",
+  "updated": "2025-11-12T10:29:24Z",
+  "title": "Implement FreeRTOS and refactor codebase to use multi-tasking",
+  "status": "completed",
+  "priority": "critical",
+  "description": "Refactor entire codebase to use FreeRTOS for multi-tasking architecture. Create separate tasks for WiFi management, sensor operations, control logic, and logging. Establish task queues for inter-task communication. This provides foundation for complex system with sensors, relays, logging, and OTA updates without blocking issues.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "WiFiManager refactored to run on dedicated FreeRTOS task",
+    "Task queues established for WiFi status communication",
+    "Main loop simplified to orchestration and OTA handling",
+    "No blocking operations in any task",
+    "Tested on device with stable operation"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": {
+    "tested": true,
+    "test_date": "2025-11-12T10:29:24Z",
+    "test_results": "Tested on device: FreeRTOS tasks running stably. WiFiManager on dedicated task executing handle() every 50ms. Main task running every 100ms with queue-based communication. Device stable with consistent free heap. All acceptance criteria met.",
+    "status": "success"
+  },
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "rtos",
+    "architecture",
+    "refactoring",
+    "foundation"
+  ]
+}

@@ -1,0 +1,75 @@
+#ifndef FREERTOS_TASKS_H
+#define FREERTOS_TASKS_H
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include "wifi_manager.h"
+
+// ========================
+// Task Priorities
+// ========================
+// FreeRTOS priorities: 0 (lowest) to configMAX_PRIORITIES-1 (highest)
+// ESP32 typically has configMAX_PRIORITIES = 25
+#define TASK_PRIORITY_WIFI 2        // WiFi management task
+#define TASK_PRIORITY_MAIN 3        // Main orchestration task
+#define TASK_PRIORITY_SENSOR 1      // Sensor reading task (placeholder)
+#define TASK_PRIORITY_CONTROL 1     // Control logic task (placeholder)
+#define TASK_PRIORITY_LOGGING 0     // Logging task (lowest priority)
+
+// ========================
+// Task Stack Sizes
+// ========================
+// Stack sizes in words (each word is 4 bytes on ESP32)
+#define TASK_STACK_WIFI (8 * 1024)      // 8KB for WiFi task
+#define TASK_STACK_MAIN (4 * 1024)      // 4KB for main task
+#define TASK_STACK_SENSOR (4 * 1024)    // 4KB for sensor task
+#define TASK_STACK_CONTROL (4 * 1024)   // 4KB for control task
+
+// ========================
+// Queue Message Types
+// ========================
+
+// WiFi Status Event - Published by WiFiTask when connection state changes
+struct WiFiStatusEvent {
+  WiFiConnectionState state;      // Current connection state
+  WiFiOperatingMode mode;         // Current operating mode (STATION or AP)
+  bool is_connected;              // Whether WiFi is connected
+  unsigned long timestamp;        // When the event occurred
+  char ssid[33];                  // Current SSID (if applicable)
+  int8_t rssi;                    // Signal strength (if applicable)
+};
+
+// ========================
+// Queue Handles (declared globally)
+// ========================
+
+extern QueueHandle_t wifiStatusQueue;
+
+// ========================
+// Task Function Declarations
+// ========================
+
+/**
+ * WiFi Management Task
+ * Runs WiFiManager state machine at regular intervals
+ * Publishes WiFi status events to queue when state changes
+ */
+void wifiTask(void* pvParameters);
+
+/**
+ * Main Orchestration Task
+ * Subscribes to WiFi status queue
+ * Handles OTA updates and task management
+ * Replaces traditional loop() with event-driven architecture
+ */
+void mainTask(void* pvParameters);
+
+/**
+ * Initialize all FreeRTOS infrastructure
+ * Creates task queues and starts all tasks
+ * Called from setup()
+ */
+void initializeFreeRTOS();
+
+#endif // FREERTOS_TASKS_H

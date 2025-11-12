@@ -1,8 +1,16 @@
 #include <Arduino.h>
 #include <SPIFFS.h>
 #include "wifi_manager.h"
+#include "freertos_tasks.h"
 
+// ========================
+// Global WiFiManager Instance
+// ========================
 WiFiManager wifiManager;
+
+// ========================
+// Setup - Initialize Hardware and FreeRTOS
+// ========================
 
 void setup() {
   // Initialize serial for debugging - EARLY OUTPUT
@@ -16,52 +24,57 @@ void setup() {
   delay(500);
 
   Serial.println("\n\n");
-  Serial.println("=== Hydromatic System Starting ===");
+  Serial.println("=== Hydromatic System Starting (FreeRTOS Multi-Tasking) ===");
 
   // Initialize SPIFFS filesystem
-  Serial.println("Setup(): Initializing SPIFFS...");
+  Serial.println("[SETUP] Initializing SPIFFS...");
   Serial.flush();
   if (!SPIFFS.begin(true)) {
-    Serial.println("ERROR: SPIFFS initialization failed!");
+    Serial.println("[ERROR] SPIFFS initialization failed!");
     Serial.flush();
     return;
   }
-  Serial.println("Setup(): SPIFFS initialized successfully.");
+  Serial.println("[SETUP] SPIFFS initialized successfully.");
   Serial.flush();
 
   // Initialize WiFi Manager with config from SPIFFS
-  Serial.println("Setup(): Initializing WiFiManager...");
-  Serial.println("Setup(): Calling wifiManager.begin()...");
+  Serial.println("[SETUP] Initializing WiFiManager...");
   Serial.flush();
   wifiManager.begin("/config.json");
-
-  Serial.println("Setup: WiFiManager initialized successfully.");
+  Serial.println("[SETUP] WiFiManager initialized successfully.");
   Serial.flush();
+
+  // Initialize FreeRTOS infrastructure (creates tasks and queues)
+  Serial.println("[SETUP] Initializing FreeRTOS multi-tasking...");
+  Serial.flush();
+  initializeFreeRTOS();
+
+  Serial.println("[SETUP] Setup complete - FreeRTOS scheduler starting");
+  Serial.println("[SETUP] All tasks will now be managed by FreeRTOS");
+  Serial.flush();
+
+  // Note: Arduino's loop() function is no longer used after setup()
+  // FreeRTOS scheduler takes over and manages all task execution
+  // The setup task will be cleaned up automatically
 }
 
+// ========================
+// Loop - No Longer Used
+// ========================
+
+/**
+ * Arduino loop() - Now Managed by FreeRTOS
+ *
+ * IMPORTANT: The Arduino framework still calls this function, but we yield to FreeRTOS
+ * All actual work is done in FreeRTOS tasks:
+ * - wifiTask() - Handles WiFi state machine
+ * - mainTask() - Handles system orchestration
+ *
+ * This loop() function now acts as a low-priority yield point that allows
+ * FreeRTOS to manage all task scheduling and execution.
+ */
 void loop() {
-  // Call WiFiManager's handle() to process state machine
-  wifiManager.handle();
-
-  // Heartbeat: print every 1 second to show device is alive
-  static unsigned long lastHeartbeat = 0;
-  if (millis() - lastHeartbeat >= 1000) {
-    lastHeartbeat = millis();
-    Serial.print(".");
-    Serial.flush();
-  }
-
-  // Print status every 10 seconds
-  static unsigned long lastPrint = 0;
-  if (millis() - lastPrint >= 10000) {
-    lastPrint = millis();
-    Serial.println();
-    Serial.print("LOOP: millis=");
-    Serial.println(millis());
-    wifiManager.printStatus();
-    Serial.println();
-  }
-
-  // Allow small delay to avoid watchdog timeout
-  delay(100);
+  // Yield control to FreeRTOS scheduler
+  // This is the idle task - just yield repeatedly
+  vTaskDelay(pdMS_TO_TICKS(100));
 }
