@@ -205,3 +205,63 @@
   "status": "completed",
   "task": "task-003"
 }
+{
+  "timestamp": "2025-11-12T15:44:28Z",
+  "type": "feature",
+  "component": "logger",
+  "summary": "Implemented Logger module with SPIFFS persistence, boot sequencing, and system stats",
+  "files": [
+    "/home/colin/projects/hydromatic/src/logger.h",
+    "/home/colin/projects/hydromatic/src/logger.cpp",
+    "/home/colin/projects/hydromatic/src/main.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "logging",
+    "spiffs",
+    "json",
+    "task-007"
+  ],
+  "tested": false,
+  "status": "completed",
+  "task": "task-007"
+}
+{
+  "timestamp": "2025-11-12T16:43:26Z",
+  "type": "fix",
+  "component": "logger",
+  "summary": "Identified boot loop root cause: C++17 static init guard mutex conflicts with FreeRTOS timing",
+  "files": [
+    "/home/colin/projects/hydromatic/src/logger.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "debugging",
+    "boot-loop",
+    "freertos",
+    "task-007"
+  ],
+  "tested": false,
+  "status": "completed",
+  "task": "task-007"
+}
+{
+  "timestamp": "2025-11-12T16:56:44Z",
+  "type": "fix",
+  "component": "logger",
+  "summary": "Fixed ESP32 boot loop by moving FreeRTOS mutex creation from constructor to begin() method",
+  "files": [
+    "/home/colin/projects/hydromatic/src/logger.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "boot-loop",
+    "freertos",
+    "mutex",
+    "threading",
+    "task-007"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-007"
+}

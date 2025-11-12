@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <SPIFFS.h>
+#include "logger.h"
 #include "wifi_manager.h"
 #include "time_manager.h"
 #include "freertos_tasks.h"
@@ -39,6 +40,10 @@ void setup() {
   Serial.println("[SETUP] SPIFFS initialized successfully.");
   Serial.flush();
 
+  // Initialize Logger subsystem (MUST be early so other modules can log during init)
+  Logger::getInstance().begin();
+  Serial.flush();
+
   // Initialize WiFi Manager with config from SPIFFS
   Serial.println("[SETUP] Initializing WiFiManager...");
   Serial.flush();
@@ -61,6 +66,9 @@ void setup() {
   Serial.println("[SETUP] Setup complete - FreeRTOS scheduler starting");
   Serial.println("[SETUP] All tasks will now be managed by FreeRTOS");
   Serial.flush();
+
+  // Log final startup message
+  Logger::getInstance().logInfo("Hydromatic system initialization complete, FreeRTOS starting");
 
   // Note: Arduino's loop() function is no longer used after setup()
   // FreeRTOS scheduler takes over and manages all task execution
