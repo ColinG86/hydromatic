@@ -1,0 +1,27 @@
+{
+  "id": "task-012",
+  "created": "2025-11-11T17:43:59Z",
+  "updated": "2025-11-11T17:43:59Z",
+  "title": "Modify device firmware to send logs over TCP",
+  "status": "open",
+  "priority": "high",
+  "description": "Update device firmware to send log messages via TCP socket to the host machine instead of (or in addition to) serial output. Device should: 1) Connect to TCP server on host at startup, 2) Send log events over TCP when they occur, 3) Handle reconnection if connection is lost, 4) Only log meaningful events (state changes, errors), not continuous WiFi status dumps.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "Device connects to TCP server on host machine",
+    "Log events are sent over TCP in real-time",
+    "Connection is re-established if interrupted",
+    "WiFi debug spam is removed or throttled",
+    "Changes tested on actual device hardware"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "firmware",
+    "logging",
+    "tcp"
+  ]
+}

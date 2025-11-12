@@ -51,6 +51,16 @@ void WiFiManager::begin(const char* configPath) {
 
   logEventF("Loaded %d WiFi credential(s)", credentials.size());
 
+  // Set hostname VERY EARLY before WiFi mode change - required for DHCP hostname registration
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char hostname[33];
+  memset(hostname, 0, sizeof(hostname));
+  snprintf(hostname, sizeof(hostname), "%s-%02X%02X%02X", ap_ssid_prefix, mac[3], mac[4], mac[5]);
+  WiFi.setHostname(hostname);
+  logEventF("Hostname set early: %s", hostname);
+  delay(100);  // Give hostname time to register
+
   // Initialize WiFi in station mode and start connecting to first credential
   WiFi.mode(WIFI_STA);
   state = CONNECTING_STATION;
@@ -171,6 +181,18 @@ void WiFiManager::connectToStation(int credential_index) {
   logEventF("Connecting to \"%s\" (attempt %d/%d)", cred.ssid, attempt_counter + 1,
             max_attempts_per_network);
 
+  // Set hostname BEFORE connecting so DHCP server gets it during handshake
+  // Only do this on first attempt to avoid issues
+  if (attempt_counter == 0) {
+    uint8_t mac[6];
+    WiFi.macAddress(mac);  // Gets MAC, returns void
+    char hostname[33];
+    memset(hostname, 0, sizeof(hostname));
+    snprintf(hostname, sizeof(hostname), "%s-%02X%02X%02X", ap_ssid_prefix, mac[3], mac[4], mac[5]);
+    WiFi.setHostname(hostname);
+    logEventF("Hostname set to: %s", hostname);
+  }
+
   // Disconnect any existing connection first
   WiFi.disconnect(false); // false = do not turn off WiFi radio
 
@@ -224,19 +246,21 @@ void WiFiManager::updateConnectionState() {
                   getLocalIP().c_str(), getSignalStrength());
         attempt_counter = 0;
 
-        // Get MAC address for hostname suffix
+        // Get MAC address for mDNS hostname
         uint8_t mac[6];
         WiFi.macAddress(mac);
         char hostname[33];
         snprintf(hostname, sizeof(hostname), "%s-%02X%02X%02X", ap_ssid_prefix, mac[3], mac[4], mac[5]);
 
-        // Set DHCP hostname (what shows up on router)
-        WiFi.setHostname(hostname);
-
         // Initialize mDNS for hostname resolution
+        // Note: MDNS.end() may be needed if reconnecting to prevent conflicts
+        MDNS.end();  // Clear any previous mDNS instances
+
         if (!MDNS.begin(hostname)) {
           logEvent("ERROR: mDNS initialization failed");
         } else {
+          // Add service advertisements to ensure hostname is advertised
+          MDNS.addService("http", "tcp", 80);
           logEventF("mDNS initialized - hostname: %s.local", hostname);
         }
       }

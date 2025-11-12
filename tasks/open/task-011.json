@@ -1,0 +1,26 @@
+{
+  "id": "task-011",
+  "created": "2025-11-11T17:43:45Z",
+  "updated": "2025-11-11T17:43:45Z",
+  "title": "Implement TCP logging server for device",
+  "status": "open",
+  "priority": "high",
+  "description": "Create a TCP server on the host machine to receive logs from the device over WiFi. This replaces serial monitoring with network-based logging. Server should listen for incoming connections from device (192.168.0.4), receive log messages, and stream them to stdout. Allows remote monitoring without serial cable.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "TCP server listens on specified port and accepts device connections",
+    "Logs from device are received and displayed in real-time",
+    "Server handles disconnects gracefully",
+    "Output can be saved to file or piped for further processing"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "logging",
+    "tcp",
+    "network"
+  ]
+}

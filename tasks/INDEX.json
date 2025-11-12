@@ -1,7 +1,7 @@
 {
-  "generated": "2025-11-11T17:33:34Z",
-  "open_count": 6,
-  "completed_count": 3,
+  "generated": "2025-11-12T10:09:17Z",
+  "open_count": 7,
+  "completed_count": 5,
   "open": [
     {
       "id": "task-003",
@@ -71,20 +71,30 @@
       "updated": "2025-11-11T08:47:14Z"
     },
     {
-      "id": "task-009",
-      "title": "Fix ESP32 hostname to show 'hydromatic-*' on network",
+      "id": "task-011",
+      "title": "Implement TCP logging server for device",
       "priority": "high",
-      "status": "in-progress",
+      "status": "open",
       "keywords": [
-        "networking",
-        "hostname",
-        "esp32",
-        "mdns",
-        "dhcp",
-        "wifi"
+        "logging",
+        "tcp",
+        "network"
       ],
-      "created": "2025-11-11T15:13:12Z",
-      "updated": "2025-11-11T17:16:00Z"
+      "created": "2025-11-11T17:43:45Z",
+      "updated": "2025-11-11T17:43:45Z"
+    },
+    {
+      "id": "task-012",
+      "title": "Modify device firmware to send logs over TCP",
+      "priority": "high",
+      "status": "open",
+      "keywords": [
+        "firmware",
+        "logging",
+        "tcp"
+      ],
+      "created": "2025-11-11T17:43:59Z",
+      "updated": "2025-11-11T17:43:59Z"
     }
   ],
   "completed": [
@@ -132,6 +142,37 @@
       "created": "2025-11-11T12:31:50Z",
       "updated": "2025-11-11T14:09:22Z",
       "completed_date": "2025-11-11T14:09:22Z"
+    },
+    {
+      "id": "task-009",
+      "title": "Fix ESP32 hostname to show 'hydromatic-*' on network",
+      "priority": "high",
+      "status": "completed",
+      "keywords": [
+        "networking",
+        "hostname",
+        "esp32",
+        "mdns",
+        "dhcp",
+        "wifi"
+      ],
+      "created": "2025-11-11T15:13:12Z",
+      "updated": "2025-11-12T10:09:17Z",
+      "completed_date": "2025-11-12T10:09:17Z"
+    },
+    {
+      "id": "task-010",
+      "title": "Investigate WiFi debug spam in serial output",
+      "priority": "high",
+      "status": "completed",
+      "keywords": [
+        "logging",
+        "debug",
+        "wifi"
+      ],
+      "created": "2025-11-11T17:42:53Z",
+      "updated": "2025-11-11T17:59:11Z",
+      "completed_date": "2025-11-11T17:59:11Z"
     }
   ]
 }

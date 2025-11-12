@@ -5,10 +5,15 @@
 WiFiManager wifiManager;
 
 void setup() {
-  // Initialize serial for debugging
-  delay(500);
+  // Initialize serial for debugging - EARLY OUTPUT
+  delay(100);
   Serial.begin(115200);
-  delay(1000); // Wait for serial to be ready
+  delay(100);
+
+  // Heartbeat: output immediately to show device is alive
+  Serial.println("\n\n[BOOT] Device booting...");
+  Serial.flush();
+  delay(500);
 
   Serial.println("\n\n");
   Serial.println("=== Hydromatic System Starting ===");
@@ -37,6 +42,14 @@ void setup() {
 void loop() {
   // Call WiFiManager's handle() to process state machine
   wifiManager.handle();
+
+  // Heartbeat: print every 1 second to show device is alive
+  static unsigned long lastHeartbeat = 0;
+  if (millis() - lastHeartbeat >= 1000) {
+    lastHeartbeat = millis();
+    Serial.print(".");
+    Serial.flush();
+  }
 
   // Print status every 10 seconds
   static unsigned long lastPrint = 0;

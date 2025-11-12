@@ -1,0 +1,30 @@
+{
+  "id": "task-010",
+  "created": "2025-11-11T17:42:53Z",
+  "updated": "2025-11-11T17:59:11Z",
+  "title": "Investigate WiFi debug spam in serial output",
+  "status": "completed",
+  "priority": "high",
+  "description": "Device is flooding serial output with repetitive WiFi status logs (RSSI readings). Need to find the source in firmware code and determine if this is intentional debug logging or a bug. Goal is to disable/throttle this spam so only meaningful events are logged.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "Identify source of repetitive RSSI log messages in firmware",
+    "Determine if logging is intentional or unintended",
+    "Document findings in task investigation section"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": {
+    "tested": true,
+    "test_date": "2025-11-11T17:59:11Z",
+    "test_results": "Verified on device - WiFi debug spam completely eliminated. Serial output now clean with only meaningful application logs (LOOP status and WiFi connection info). Bootloader startup garbage is normal ESP32 behavior.",
+    "status": "success"
+  },
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "logging",
+    "debug",
+    "wifi"
+  ]
+}

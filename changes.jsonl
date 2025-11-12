@@ -105,3 +105,59 @@
   "status": "completed",
   "task": "task-008"
 }
+{
+  "timestamp": "2025-11-11T17:48:48Z",
+  "type": "fix",
+  "component": "logging",
+  "summary": "Identified WiFi debug spam source: CORE_DEBUG_LEVEL=1 in platformio.ini causes ESP-IDF verbose WiFi debug output",
+  "files": [
+    "/home/colin/projects/hydromatic/platformio.ini"
+  ],
+  "agent": "claude",
+  "tags": [
+    "debug",
+    "logging",
+    "wifi",
+    "esp32"
+  ],
+  "tested": false,
+  "status": "completed",
+  "task": "task-010"
+}
+{
+  "timestamp": "2025-11-11T18:22:22Z",
+  "type": "fix",
+  "component": "wifi_manager",
+  "summary": "Fix DHCP hostname registration by setting hostname BEFORE WiFi connection handshake",
+  "files": [
+    "/home/colin/projects/hydromatic/src/wifi_manager.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "hostname",
+    "dhcp",
+    "mdns"
+  ],
+  "tested": false,
+  "status": "completed",
+  "task": "task-009"
+}
+{
+  "timestamp": "2025-11-12T10:09:01Z",
+  "type": "fix",
+  "component": "wifi_manager",
+  "summary": "Fix DHCP hostname registration - set hostname VERY EARLY in begin() before WiFi mode change",
+  "files": [
+    "/home/colin/projects/hydromatic/src/wifi_manager.cpp",
+    "/home/colin/projects/hydromatic/src/main.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "hostname",
+    "dhcp",
+    "fixed"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-009"
+}
