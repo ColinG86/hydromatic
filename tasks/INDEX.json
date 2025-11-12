@@ -1,22 +1,8 @@
 {
-  "generated": "2025-11-12T10:29:25Z",
-  "open_count": 7,
-  "completed_count": 6,
+  "generated": "2025-11-12T12:23:35Z",
+  "open_count": 6,
+  "completed_count": 7,
   "open": [
-    {
-      "id": "task-003",
-      "title": "Implement Time Manager module",
-      "priority": "critical",
-      "status": "open",
-      "keywords": [
-        "time",
-        "ntp",
-        "phase-1",
-        "critical"
-      ],
-      "created": "2025-11-11T08:36:57Z",
-      "updated": "2025-11-11T08:36:57Z"
-    },
     {
       "id": "task-004",
       "title": "Implement OTA Manager module",
@@ -127,6 +113,21 @@
       "created": "2025-11-11T08:36:28Z",
       "updated": "2025-11-11T12:29:21Z",
       "completed_date": "2025-11-11T12:29:21Z"
+    },
+    {
+      "id": "task-003",
+      "title": "Implement Time Manager module",
+      "priority": "critical",
+      "status": "completed",
+      "keywords": [
+        "time",
+        "ntp",
+        "phase-1",
+        "critical"
+      ],
+      "created": "2025-11-11T08:36:57Z",
+      "updated": "2025-11-12T12:23:35Z",
+      "completed_date": "2025-11-12T12:23:35Z"
     },
     {
       "id": "task-008",

@@ -182,3 +182,26 @@
   "status": "completed",
   "task": "task-013"
 }
+{
+  "timestamp": "2025-11-12T10:37:06Z",
+  "type": "feature",
+  "component": "time",
+  "summary": "Implement TimeManager module with NTP sync, timezone support, and FreeRTOS integration",
+  "files": [
+    "/home/colin/projects/hydromatic/src/time_manager.h",
+    "/home/colin/projects/hydromatic/src/time_manager.cpp",
+    "/home/colin/projects/hydromatic/src/freertos_tasks.h",
+    "/home/colin/projects/hydromatic/src/freertos_tasks.cpp",
+    "/home/colin/projects/hydromatic/src/main.cpp"
+  ],
+  "agent": "claude",
+  "tags": [
+    "time",
+    "ntp",
+    "rtos",
+    "synchronization"
+  ],
+  "tested": false,
+  "status": "completed",
+  "task": "task-003"
+}

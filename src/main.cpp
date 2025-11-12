@@ -1,12 +1,14 @@
 #include <Arduino.h>
 #include <SPIFFS.h>
 #include "wifi_manager.h"
+#include "time_manager.h"
 #include "freertos_tasks.h"
 
 // ========================
-// Global WiFiManager Instance
+// Global Manager Instances
 // ========================
 WiFiManager wifiManager;
+TimeManager timeManager;
 
 // ========================
 // Setup - Initialize Hardware and FreeRTOS
@@ -42,6 +44,13 @@ void setup() {
   Serial.flush();
   wifiManager.begin("/config.json");
   Serial.println("[SETUP] WiFiManager initialized successfully.");
+  Serial.flush();
+
+  // Initialize Time Manager with config from SPIFFS
+  Serial.println("[SETUP] Initializing TimeManager...");
+  Serial.flush();
+  timeManager.begin("/config.json");
+  Serial.println("[SETUP] TimeManager initialized successfully.");
   Serial.flush();
 
   // Initialize FreeRTOS infrastructure (creates tasks and queues)

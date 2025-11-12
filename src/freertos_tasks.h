@@ -12,6 +12,7 @@
 // FreeRTOS priorities: 0 (lowest) to configMAX_PRIORITIES-1 (highest)
 // ESP32 typically has configMAX_PRIORITIES = 25
 #define TASK_PRIORITY_WIFI 2        // WiFi management task
+#define TASK_PRIORITY_TIME 2        // Time synchronization task
 #define TASK_PRIORITY_MAIN 3        // Main orchestration task
 #define TASK_PRIORITY_SENSOR 1      // Sensor reading task (placeholder)
 #define TASK_PRIORITY_CONTROL 1     // Control logic task (placeholder)
@@ -21,8 +22,10 @@
 // Task Stack Sizes
 // ========================
 // Stack sizes in words (each word is 4 bytes on ESP32)
+// NOTE: Increased for testing - revert after TimeManager tests complete
 #define TASK_STACK_WIFI (8 * 1024)      // 8KB for WiFi task
-#define TASK_STACK_MAIN (4 * 1024)      // 4KB for main task
+#define TASK_STACK_TIME (8 * 1024)      // 8KB for time sync task (increased for testing)
+#define TASK_STACK_MAIN (8 * 1024)      // 8KB for main task (increased for testing)
 #define TASK_STACK_SENSOR (4 * 1024)    // 4KB for sensor task
 #define TASK_STACK_CONTROL (4 * 1024)   // 4KB for control task
 
@@ -56,6 +59,14 @@ extern QueueHandle_t wifiStatusQueue;
  * Publishes WiFi status events to queue when state changes
  */
 void wifiTask(void* pvParameters);
+
+/**
+ * Time Synchronization Task
+ * Handles NTP synchronization and time management
+ * Subscribes to WiFi status to trigger NTP sync when available
+ * Runs every 1000ms
+ */
+void timeTask(void* pvParameters);
 
 /**
  * Main Orchestration Task
