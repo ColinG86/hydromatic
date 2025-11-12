@@ -1,27 +1,68 @@
 {
   "id": "task-012",
   "created": "2025-11-11T17:43:59Z",
-  "updated": "2025-11-11T17:43:59Z",
-  "title": "Modify device firmware to send logs over TCP",
+  "updated": "2025-11-12T02:00:00Z",
+  "title": "Create NetworkLogger task for TCP sync with timestamp calculation and boot sequencing",
   "status": "open",
   "priority": "high",
-  "description": "Update device firmware to send log messages via TCP socket to the host machine instead of (or in addition to) serial output. Device should: 1) Connect to TCP server on host at startup, 2) Send log events over TCP when they occur, 3) Handle reconnection if connection is lost, 4) Only log meaningful events (state changes, errors), not continuous WiFi status dumps.",
+  "description": "Implement dedicated FreeRTOS task (core 0) that handles all TCP communication for logging, system monitoring, and remote control. Task reads unsent log entries from /data/active.log, calculates timestamps based on NTP sync history, sends JSON-line messages to server, waits for per-entry acknowledgments, deletes confirmed entries, and sends heartbeat with system stats every 1 second of idle time. Handles reconnection with silent backoff. Completely decoupled from application logic (core 1). Non-blocking by design.",
   "assigned_to": null,
   "acceptance_criteria": [
-    "Device connects to TCP server on host machine",
-    "Log events are sent over TCP in real-time",
-    "Connection is re-established if interrupted",
-    "WiFi debug spam is removed or throttled",
-    "Changes tested on actual device hardware"
+    "NetworkLogger task created in src/network_logger.h/.cpp",
+    "Task reads TCP server address and port from config.json",
+    "Maintains /data/ntp_history.json tracking NTP sync per boot",
+    "Connects to server at startup with 5-10 second timeout",
+    "Reads first unconfirmed entry from /data/active.log: {\"boot_seq\":3,\"uptime_ms\":45000,\"seq\":42,...}",
+    "Mutex protect active.log reads/deletes to prevent corruption with concurrent Logger writes",
+    "Detect corrupted JSON lines on read: if parsing fails, wrap in new entry {\"level\":\"error\",\"msg\":\"Corrupted log entry detected and skipped: ...raw bytes...\"}, log it, skip corrupted entry",
+    "Calculates ts on send: if boot_seq synced NTP, compute ts from (current_time - current_uptime_ms + entry_uptime_ms); else ts=null",
+    "Sends JSON-line entry to server: {\"boot_seq\":3,\"uptime_ms\":45000,\"seq\":42,\"ts\":null|\"...\",\"level\":\"...\",\"msg\":\"...\",\"system\":{...}}\n",
+    "Waits for per-entry ack: {\"ack\":1} with reasonable timeout",
+    "On ack: deletes entry from active.log (mutex protected), reads next entry",
+    "On ack timeout: silently retries with exponential backoff (5s, 10s, 30s, then 30s steady) - NO logging of transient failures",
+    "Track last_send_time after each successful send or heartbeat",
+    "If > 1 second idle (no entries to send): generate and send heartbeat directly",
+    "Heartbeat format: {\"boot_seq\":3,\"uptime_ms\":45000,\"ts\":null|\"...\",\"type\":\"heartbeat\",\"system\":{...}} - does NOT write to active.log",
+    "Heartbeat includes same system stats as log entries: heap_free, heap_used, uptime_ms, free_psram, task_count, spiffs_free, spiffs_used",
+    "Heartbeat ts calculated same way as log entries (null if boot never synced NTP)",
+    "Waits for heartbeat ack: {\"ack\":1} with reasonable timeout (validates bidirectional connection)",
+    "On heartbeat ack timeout: silently retries next second - NO logging (server detects from heartbeat gaps)",
+    "Non-blocking throughout (timeouts, no indefinite waits)",
+    "Task runs on core 0, independent from application",
+    "Receive commands from server: {\"cmd\":\"status\"} - JSON-line format",
+    "Command queue (FreeRTOS) to pass commands to application task (core 1) without blocking network task",
+    "Status command: return system stats snapshot, log as: {\"level\":\"info\",\"msg\":\"Status requested\",\"system\":{...},\"cmd_response\":true}",
+    "Non-blocking command handling: queue command, don't wait for execution",
+    "Config.json includes tcp_server_host, tcp_server_port, tcp_timeout_ms, heartbeat_interval_ms (default 1000)",
+    "Tested: logs sync with calculated ts, null ts for unsync boots, acks work, heartbeats every 1s idle, silent retries, corrupted entries handled, status command works, no blocking"
   ],
-  "investigation": [],
-  "solution": null,
+  "investigation": [
+    {
+      "timestamp": "2025-11-12T01:50:00Z",
+      "action": "Discussed timestamp and NTP sync architecture with user",
+      "finding": "Final design: Device never stores ts in active.log, only uptime_ms+boot_seq+seq. NetworkLogger calculates ts on send based on NTP sync history. Handles multiple power cycles without network: ts becomes null for unsync boots. Perfect ordering via (boot_seq, uptime_ms, seq). No transient failure logging—server detects via heartbeat gaps. Silent retries with backoff."
+    }
+  ],
+  "solution": {
+    "approach": "FreeRTOS task that loops: (1) Check for commands on TCP socket (non-blocking), queue any to application, (2) Check if entry in active.log (mutex protected), (3) If yes: Connect if needed, read entry with corruption check, calculate ts from ntp_history.json (null if unsync), send with ts, get ack, delete entry (mutex), update last_send_time, (4) If corrupted: wrap error entry and requeue, (5) If no entries: check if > 1s idle, if yes generate heartbeat with calculated ts, send directly (no file), wait for ack, update last_send_time, (6) Small delay. All with timeouts and silent exponential backoff. Logger and NetworkLogger interact through files (mutex protected) and command queue.",
+    "files_to_modify": [
+      "src/network_logger.h",
+      "src/network_logger.cpp",
+      "src/main.cpp",
+      "data/ntp_history.json (created/managed by task)"
+    ],
+    "changes": "Create NetworkLogger task spawned on core 0. Initialize mutex for active.log, command queue. On begin(): initialize ntp_history.json. Main loop: receive command from TCP (non-blocking), parse and queue to app if valid, read active.log entry (mutex lock), validate JSON (if corrupted, wrap error and requeue), call Logger.getSystemStats(), read ntp_history.json, calculate ts from boot_seq lookup, send JSON with calculated ts (or null). On ack: delete entry (mutex), try next. Heartbeat: same ts logic, send directly (no file), wait for ack, silent retries. Command queue allows core 1 app to handle commands asynchronously. Config.json extended with tcp_server_host, tcp_server_port, tcp_timeout_ms, heartbeat_interval_ms. TimeManager (task-003) updates ntp_history.json when NTP syncs."
+  },
   "verification": null,
   "blockers": [],
-  "related_tasks": [],
+  "related_tasks": ["task-007", "task-011"],
   "tags": [
     "firmware",
     "logging",
-    "tcp"
+    "tcp",
+    "network",
+    "freertos",
+    "bidirectional",
+    "core-0"
   ]
 }
