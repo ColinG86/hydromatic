@@ -29,5 +29,12 @@
     "enabled": true,
     "port": 3232,
     "hostname_prefix": "hydromatic"
+  },
+  "tcp_logging": {
+    "server_host": "work-laptop.local",
+    "server_port": 5000,
+    "ack_timeout_ms": 2000,
+    "heartbeat_interval_ms": 1000,
+    "retry_backoff_ms": [5000, 10000, 30000]
   }
 }

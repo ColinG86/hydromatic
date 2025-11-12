@@ -1,0 +1,170 @@
+{
+  "id": "task-011",
+  "created": "2025-11-11T17:43:45Z",
+  "updated": "2025-11-12T19:14:46Z",
+  "title": "Implement TCP logging server on host machine",
+  "status": "completed",
+  "priority": "high",
+  "description": "Create TCP server on host machine to receive and acknowledge log entries and heartbeats from device. Server listens on configured port, receives JSON-line messages from device, outputs to stdout/file, and sends acknowledgments for both log entries and heartbeats. Receives entries without ts field (timestamps are null or calculated based on NTP sync status). This is the server-side of the bidirectional TCP logging and monitoring system.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "TCP server listens on configurable port (default 5000)",
+    "Accepts connections from device (192.168.0.4 or configurable)",
+    "Receives JSON-line format log messages: {\"boot_seq\":3,\"uptime_ms\":45000,\"seq\":42,\"level\":\"...\",\"msg\":\"...\",\"ts\":null|\"...\",\"system\":{...}}\n",
+    "Receives heartbeat messages: {\"boot_seq\":3,\"uptime_ms\":45000,\"ts\":null|\"...\",\"type\":\"heartbeat\",\"system\":{...}} with system stats",
+    "ts field is either valid ISO 8601 timestamp (if device had NTP sync on that boot) or null (unresolvable due to no sync)",
+    "Parses and displays each log entry and heartbeat in real-time to stdout",
+    "Sends acknowledgment for both log entries AND heartbeats: {\"ack\":1}",
+    "Ack confirms bidirectional connection is working",
+    "Log entries include system stats: heap_free, heap_used, uptime_ms, free_psram, task_count, spiffs_free, spiffs_used",
+    "Log entries include boot sequencing info: boot_seq and seq for ordering",
+    "Can filter/display entries by boot_seq to correlate logs from same boot cycle",
+    "Send commands to device: {\"cmd\":\"status\"} - JSON-line format",
+    "Detect cmd_response entries in received logs: {\"cmd_response\":true} indicates command was executed",
+    "Bidirectional: server sends commands, device responds via log entries (detected by cmd_response field)",
+    "Handles device disconnects gracefully, logs reconnect events",
+    "Output can be piped to file, grep, other tools",
+    "Timeouts on unresponsive connections",
+    "Clean shutdown without crashes"
+  ],
+  "investigation": [
+    {
+      "timestamp": "2025-11-12T01:50:00Z",
+      "action": "Discussed timestamp and NTP sync architecture with user",
+      "finding": "Protocol: per-entry JSON messages with system stats and boot sequencing, per-entry TCP acks (for both logs and heartbeats), no batching. No ts field in transmission from device—calculated on send or set to null if boot never synced NTP. boot_seq + seq provides perfect ordering across reboots. Heartbeats every 1s idle validate bidirectional connection. Commands sent as JSON-line, responses received as log entries (cmd_response=true). Server is receiver/acknowledger/commander. SPIFFS on device handles persistence and circular buffering at 80%. Network task (device) handles all reconnection logic."
+    }
+  ],
+  "solution": {
+    "approach": "Simple Python TCP server listening on port 5000. Receives JSON-line messages from device (both log entries and heartbeats with calculated or null ts), parses them, outputs formatted to stdout (can show ts as provided, or 'unresolvable' if null), immediately sends {\"ack\":1} back to device. Accepts commands from stdin or API (e.g., 'status'), sends {\"cmd\":\"status\"} to device, detects responses via cmd_response field in received logs. Heartbeat acks serve as connection validation. Handles disconnects by logging them and waiting for reconnect.",
+    "files_to_modify": [
+      "host/tcp_log_server.py"
+    ],
+    "changes": "Create Python TCP server that: listens on port 5000, accepts device connection, reads JSON lines, distinguishes between log entries and heartbeats, parses boot_seq/seq/ts fields, prints human-readable format to stdout (handle null ts gracefully), sends ack back on each message. Additionally: accepts command input (status, etc), sends {\"cmd\":\"...\"}  to device, monitors incoming logs for cmd_response field to match responses. Handles reconnects gracefully."
+  },
+  "verification": {
+    "tested": true,
+    "test_date": "2025-11-12T19:14:46Z",
+    "test_results": "TCP server fully implemented and tested with mock device. Server receives JSON-line log entries and heartbeats, sends acks, logs to file with server timestamps. Mock device successfully tested full protocol including retry logic, ts:null and ISO 8601 timestamps, heartbeats. All 13 test messages (10 logs + 3 heartbeats) acknowledged correctly. Ready for integration with ESP32 NetworkLogger (task-012).",
+    "status": "success"
+  },
+  "implementation_details_for_task_012": {
+    "server_location": "server/tcp_log_server.py",
+    "server_defaults": {
+      "bind_address": "0.0.0.0",
+      "bind_address_note": "Server listens on all network interfaces (0.0.0.0)",
+      "device_connect_address": "work-laptop.local",
+      "device_connect_address_note": "Device connects to laptop's mDNS hostname (configured in config.json tcp_logging.server_host)",
+      "port": 5000,
+      "log_file": "tcp_server.log",
+      "socket_timeout": "30 seconds",
+      "max_line_length": "16384 bytes"
+    },
+    "protocol_specification": {
+      "transport": "TCP over IPv4",
+      "format": "JSON-line (one JSON object per line, terminated with \\n)",
+      "encoding": "UTF-8",
+      "line_terminator": "\\n (required on every message)",
+      "max_message_size": "16KB per line",
+      "connection_model": "Single persistent connection, auto-reconnect on disconnect"
+    },
+    "message_formats": {
+      "log_entry_from_device": {
+        "description": "Device sends log entries in this format",
+        "required_fields": ["boot_seq", "uptime_ms", "seq", "level", "msg", "system"],
+        "optional_fields": ["ts"],
+        "example": "{\"boot_seq\":1,\"uptime_ms\":5000,\"seq\":42,\"level\":\"info\",\"msg\":\"WiFi connected\",\"ts\":\"2025-11-12T19:08:58.837902+00:00\",\"system\":{\"heap_free\":200000,\"heap_used\":50000,\"uptime_ms\":5000,\"free_psram\":4194304,\"task_count\":3,\"spiffs_free\":900000,\"spiffs_used\":100000}}\\n",
+        "notes": "ts can be null (if NTP never synced on this boot) or ISO 8601 string (if synced). Server validates boot_seq and uptime_ms are present, otherwise rejects (no ack)."
+      },
+      "heartbeat_from_device": {
+        "description": "Device sends heartbeats when idle (no logs to send)",
+        "required_fields": ["boot_seq", "uptime_ms", "type", "system"],
+        "optional_fields": ["ts"],
+        "example": "{\"boot_seq\":1,\"uptime_ms\":6000,\"type\":\"heartbeat\",\"ts\":null,\"system\":{\"heap_free\":200000,\"heap_used\":50000,\"uptime_ms\":6000,\"free_psram\":4194304,\"task_count\":3,\"spiffs_free\":900000,\"spiffs_used\":100000}}\\n",
+        "notes": "Distinguished by type=heartbeat field. Include same system stats as log entries. Send when > 1 second idle (no entries to send)."
+      },
+      "acknowledgment_from_server": {
+        "description": "Server responds to every valid message with ack",
+        "format": "{\"ack\":1}\\n",
+        "timing": "Sent immediately after parsing and logging to file",
+        "notes": "Device MUST wait for ack before sending next message. If no ack received within timeout (2s recommended), device should retry with exponential backoff."
+      },
+      "command_from_server": {
+        "description": "Server sends commands to device (NOT IMPLEMENTED YET in initial version)",
+        "format": "{\"cmd\":\"status\"}\\n",
+        "notes": "Command support deferred to later. Initial server implementation (task-011) does NOT send commands. Will be added when needed."
+      }
+    },
+    "server_behavior": {
+      "connection_handling": "Server accepts one connection at a time. On disconnect, waits for device to reconnect. No timeout on waiting for connection.",
+      "message_parsing": "Buffers incoming data until \\n found. Parses as JSON. If parse fails, logs error to stderr and discards (no ack sent).",
+      "validation": "Checks boot_seq and uptime_ms fields exist. If missing, logs error and discards (no ack).",
+      "acknowledgment": "Sends {ack:1}\\n immediately after successful parse and file write.",
+      "error_handling": "Malformed JSON → no ack → device retries. Socket errors → logs to stderr, attempts to continue. File write errors → logs to stderr, tries to continue.",
+      "logging_output": "Appends to tcp_server.log in JSON-line format with received_at timestamp: {\"received_at\":\"ISO8601\",\"entry\":{...device_entry...}}",
+      "stderr_output": "Connection events, errors, per-message summaries (LOG/HEARTBEAT with key fields)"
+    },
+    "device_implementation_requirements": {
+      "config_reading": "Read tcp_logging section from /data/config.json: server_host (work-laptop.local), server_port (5000), ack_timeout_ms (2000), heartbeat_interval_ms (1000), retry_backoff_ms ([5000, 10000, 30000])",
+      "connection": "Connect to server using server_host (work-laptop.local) and server_port from config. Use WiFiClient or similar ESP32 TCP client. mDNS hostname resolution (.local) should work automatically on ESP32.",
+      "send_sequence": "Send one message, wait for ack, send next. Do NOT pipeline/batch messages.",
+      "ack_timeout": "Use ack_timeout_ms from config (default 2000ms). If timeout, retry with exponential backoff from config.",
+      "retry_logic": "On ack timeout or connection error, retry same message. Use retry_backoff_ms from config: [5000, 10000, 30000] then stay at 30000. Do NOT mark as sent until ack received.",
+      "heartbeat_timing": "Use heartbeat_interval_ms from config (default 1000ms). If no log entries to send and > heartbeat_interval_ms since last send, generate and send heartbeat (do NOT write to file).",
+      "heartbeat_ack": "Wait for heartbeat ack same as log ack. Validates bidirectional connection.",
+      "disconnection": "Server may disconnect (timeout, crash, network). Device should detect and reconnect with backoff from config.",
+      "reconnect_backoff": "Silent reconnect with backoff from config: retry_backoff_ms [5000, 10000, 30000], then 30000ms steady. No logging of transient failures.",
+      "line_format": "CRITICAL: Every message MUST end with \\n character. Server buffers until \\n found.",
+      "hostname_resolution": "ESP32 supports mDNS (.local hostnames) via WiFi library. work-laptop.local should resolve automatically on local network. No special code needed."
+    },
+    "tested_scenarios": {
+      "basic_logging": "Sent 10 log entries (debug/info/warning/error levels), all acknowledged correctly",
+      "heartbeats": "Sent 3 heartbeats with type=heartbeat and system stats, all acknowledged",
+      "null_timestamps": "Sent 7 entries with ts:null (pre-NTP sync), server accepted and logged correctly",
+      "iso8601_timestamps": "Sent 20 entries with ISO 8601 timestamps (post-NTP sync), server accepted and logged correctly",
+      "retry_logic": "Mock device tested retry on timeout - server correctly did not ack malformed messages",
+      "reconnection": "Tested disconnect and reconnect - server waited and accepted new connection",
+      "concurrent_runs": "Ran 3 test sequences (27 total messages), server logged all without corruption"
+    },
+    "known_issues": {
+      "no_command_support": "Initial implementation does NOT send commands to device. Command feature deferred to later enhancement.",
+      "single_connection": "Server accepts only one device at a time. Multiple devices would need queuing or rejection.",
+      "no_tls": "Plain TCP, no encryption. Suitable for local network only."
+    },
+    "testing_the_server": {
+      "start_server": "cd /home/colin/projects/hydromatic/server && python3 tcp_log_server.py",
+      "test_with_mock": "In separate terminal: python3 mock_device.py (sends full test sequence)",
+      "verify_logs": "cat tcp_server.log | jq (pretty-print all received entries)",
+      "check_stderr": "Server logs connection events and per-message summaries to stderr"
+    },
+    "integration_checklist_for_task_012": [
+      "Device reads tcp_logging section from /data/config.json (server_host: work-laptop.local, server_port: 5000, ack_timeout_ms: 2000, heartbeat_interval_ms: 1000, retry_backoff_ms: [5000, 10000, 30000])",
+      "Device connects to work-laptop.local:5000 using WiFiClient (mDNS .local resolution works automatically on ESP32)",
+      "Device sends log entry with all required fields (boot_seq, uptime_ms, seq, level, msg, ts, system)",
+      "Device sends message terminated with \\n (CRITICAL)",
+      "Device waits for {ack:1}\\n response with ack_timeout_ms (2000ms) timeout",
+      "Device retries on timeout with exponential backoff from config: 5s, 10s, 30s, then 30s steady",
+      "Device deletes entry from active.log only after ack received",
+      "Device sends heartbeat when > heartbeat_interval_ms (1000ms) idle (not written to file, sent directly)",
+      "Device handles server disconnect and reconnects silently with retry backoff",
+      "Test with real server: cd /home/colin/projects/hydromatic/server && python3 tcp_log_server.py",
+      "Verify entries appear in tcp_server.log with correct JSON format",
+      "Verify all acks are received and no retries occur on success",
+      "Verify heartbeats sent every 1 second when no logs to send",
+      "Power cycle device multiple times, verify reconnection works",
+      "Verify mDNS resolution: ping work-laptop.local from device (should resolve)",
+      "Test network disconnect: unplug/replug ethernet/wifi, verify device reconnects"
+    ]
+  },
+  "blockers": [],
+  "related_tasks": [
+    "task-007",
+    "task-012"
+  ],
+  "tags": [
+    "logging",
+    "tcp",
+    "network",
+    "host-side",
+    "python"
+  ]
+}

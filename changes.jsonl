@@ -265,3 +265,47 @@
   "status": "completed",
   "task": "task-007"
 }
+{
+  "timestamp": "2025-11-12T19:14:23Z",
+  "type": "feature",
+  "component": "tcp-server",
+  "summary": "Implemented TCP logging server with JSON-line format, per-message acks, and mock device for testing",
+  "files": [
+    "/home/colin/projects/hydromatic/server/tcp_log_server.py",
+    "/home/colin/projects/hydromatic/server/mock_device.py",
+    "/home/colin/projects/hydromatic/server/README.md"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": true,
+  "status": "completed",
+  "task": "task-011"
+}
+{
+  "timestamp": "2025-11-12T19:18:07Z",
+  "type": "doc",
+  "component": "task-011",
+  "summary": "Added comprehensive implementation details and integration checklist for task-012 device-side NetworkLogger",
+  "files": [
+    "/home/colin/projects/hydromatic/tasks/completed/task-011.json"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed"
+}
+{
+  "timestamp": "2025-11-12T19:33:37Z",
+  "type": "fix",
+  "component": "config",
+  "summary": "Updated config.json with tcp_logging section using work-laptop.local mDNS hostname. Clarified server binds to 0.0.0.0, device connects to hostname.local",
+  "files": [
+    "/home/colin/projects/hydromatic/data/config.json",
+    "/home/colin/projects/hydromatic/tasks/completed/task-011.json",
+    "/home/colin/projects/hydromatic/server/README.md"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed"
+}

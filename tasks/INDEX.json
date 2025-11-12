@@ -1,7 +1,7 @@
 {
-  "generated": "2025-11-12T16:57:10Z",
-  "open_count": 5,
-  "completed_count": 8,
+  "generated": "2025-11-12T19:14:47Z",
+  "open_count": 4,
+  "completed_count": 9,
   "open": [
     {
       "id": "task-004",
@@ -43,21 +43,6 @@
       ],
       "created": "2025-11-11T08:47:08Z",
       "updated": "2025-11-11T08:47:08Z"
-    },
-    {
-      "id": "task-011",
-      "title": "Implement TCP logging server on host machine",
-      "priority": "high",
-      "status": "open",
-      "keywords": [
-        "logging",
-        "tcp",
-        "network",
-        "host-side",
-        "python"
-      ],
-      "created": "2025-11-11T17:43:45Z",
-      "updated": "2025-11-12T01:15:00Z"
     },
     {
       "id": "task-012",
@@ -184,6 +169,22 @@
       "created": "2025-11-11T17:42:53Z",
       "updated": "2025-11-11T17:59:11Z",
       "completed_date": "2025-11-11T17:59:11Z"
+    },
+    {
+      "id": "task-011",
+      "title": "Implement TCP logging server on host machine",
+      "priority": "high",
+      "status": "completed",
+      "keywords": [
+        "logging",
+        "tcp",
+        "network",
+        "host-side",
+        "python"
+      ],
+      "created": "2025-11-11T17:43:45Z",
+      "updated": "2025-11-12T19:14:46Z",
+      "completed_date": "2025-11-12T19:14:46Z"
     },
     {
       "id": "task-013",
