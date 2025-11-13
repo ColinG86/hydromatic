@@ -1,9 +1,16 @@
 #include "time_manager.h"
+#include "logger.h"
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
+
+// ========================
+// Constants
+// ========================
+
+const char* TimeManager::NTP_HISTORY_PATH = "/data/ntp_history.json";
 
 // ========================
 // Constructor
@@ -65,6 +72,9 @@ void TimeManager::begin(const char* configPath) {
 
   // Apply timezone immediately
   setTimezone(timezone);
+
+  // Load NTP history from file
+  loadNTPHistory();
 
   // Log startup info
   logEventF("Config loaded: NTP=%s, TZ=%s, Timeout=%ds", ntp_server, timezone, ntp_timeout_seconds);
@@ -194,6 +204,12 @@ void TimeManager::updateNTPState() {
       last_sync_time = now;
       xSemaphoreGive(time_mutex);
     }
+
+    // Update NTP history for NetworkLogger timestamp calculation
+    // Get current boot_seq from Logger
+    uint32_t boot_seq = Logger::getInstance().getBootSeq();
+    uint32_t uptime_ms = millis();
+    updateNTPHistory(boot_seq, now, uptime_ms);
 
     // Reset for next potential sync
     ntp_state = NTP_IDLE;
@@ -509,4 +525,147 @@ const char* TimeManager::getNTPStateString(NTPSyncState state) {
     default:
       return "UNKNOWN";
   }
+}
+
+// ========================
+// NTP History Management (for NetworkLogger)
+// ========================
+
+void TimeManager::loadNTPHistory() {
+  if (!SPIFFS.exists(NTP_HISTORY_PATH)) {
+    Serial.println("[TIME] NTP history file not found, will create on first sync");
+    return;
+  }
+
+  File file = SPIFFS.open(NTP_HISTORY_PATH, FILE_READ);
+  if (!file) {
+    Serial.println("[TIME] Failed to open NTP history file");
+    return;
+  }
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, file);
+  file.close();
+
+  if (error) {
+    Serial.printf("[TIME] NTP history JSON parse error: %s, reinitializing\n", error.c_str());
+    // Corrupted file - reinitialize
+    return;
+  }
+
+  if (!doc.containsKey("boots")) {
+    Serial.println("[TIME] NTP history missing 'boots' array, reinitializing");
+    return;
+  }
+
+  JsonArray boots = doc["boots"];
+  Serial.printf("[TIME] Loaded NTP history with %d boot entries\n", boots.size());
+}
+
+void TimeManager::updateNTPHistory(uint32_t boot_seq, time_t ntp_sync_time, uint32_t sync_uptime_ms) {
+  // Read existing history
+  JsonDocument doc;
+
+  if (SPIFFS.exists(NTP_HISTORY_PATH)) {
+    File file = SPIFFS.open(NTP_HISTORY_PATH, FILE_READ);
+    if (file) {
+      DeserializationError error = deserializeJson(doc, file);
+      file.close();
+
+      if (error) {
+        Serial.printf("[TIME] NTP history corrupted, reinitializing: %s\n", error.c_str());
+        doc.clear();
+      }
+    }
+  }
+
+  // Ensure boots array exists
+  if (!doc.containsKey("boots")) {
+    doc["boots"] = JsonArray();
+  }
+
+  JsonArray boots = doc["boots"];
+
+  // Check if this boot_seq already exists (update if so)
+  bool found = false;
+  for (JsonObject boot : boots) {
+    if (boot["boot_seq"] == boot_seq) {
+      boot["ntp_sync_time"] = (unsigned long)ntp_sync_time;
+      boot["sync_uptime_ms"] = sync_uptime_ms;
+      found = true;
+      break;
+    }
+  }
+
+  // Add new entry if not found
+  if (!found) {
+    JsonObject newBoot = boots.add<JsonObject>();
+    newBoot["boot_seq"] = boot_seq;
+    newBoot["ntp_sync_time"] = (unsigned long)ntp_sync_time;
+    newBoot["sync_uptime_ms"] = sync_uptime_ms;
+  }
+
+  // Prune old entries (keep last MAX_BOOT_HISTORY)
+  while (boots.size() > MAX_BOOT_HISTORY) {
+    boots.remove(0);  // Remove oldest
+  }
+
+  // Write back to file
+  File file = SPIFFS.open(NTP_HISTORY_PATH, FILE_WRITE);
+  if (!file) {
+    Serial.println("[TIME] Failed to open NTP history file for writing");
+    return;
+  }
+
+  size_t written = serializeJson(doc, file);
+  file.close();
+
+  if (written == 0) {
+    Serial.println("[TIME] Failed to write NTP history");
+  } else {
+    Serial.printf("[TIME] NTP history updated: boot_seq=%u, sync_time=%lu, uptime=%u (%zu bytes)\n",
+                  boot_seq, (unsigned long)ntp_sync_time, sync_uptime_ms, written);
+  }
+}
+
+bool TimeManager::getNTPHistoryForBoot(uint32_t boot_seq, time_t& ntp_sync_time, uint32_t& sync_uptime_ms) {
+  // Initialize outputs
+  ntp_sync_time = 0;
+  sync_uptime_ms = 0;
+
+  if (!SPIFFS.exists(NTP_HISTORY_PATH)) {
+    return false;
+  }
+
+  File file = SPIFFS.open(NTP_HISTORY_PATH, FILE_READ);
+  if (!file) {
+    Serial.println("[TIME] getNTPHistoryForBoot: Failed to open NTP history file");
+    return false;
+  }
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, file);
+  file.close();
+
+  if (error) {
+    Serial.printf("[TIME] getNTPHistoryForBoot: JSON parse error: %s\n", error.c_str());
+    return false;
+  }
+
+  if (!doc.containsKey("boots")) {
+    return false;
+  }
+
+  JsonArray boots = doc["boots"];
+  for (JsonObject boot : boots) {
+    if (boot["boot_seq"] == boot_seq) {
+      // Found matching boot_seq
+      ntp_sync_time = boot["ntp_sync_time"];
+      sync_uptime_ms = boot["sync_uptime_ms"];
+      return true;
+    }
+  }
+
+  // Not found
+  return false;
 }

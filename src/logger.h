@@ -150,6 +150,22 @@ public:
    */
   void getSystemStats(JsonDocument& doc);
 
+  /**
+   * Get log file mutex handle
+   * Used by NetworkLogger to synchronize access to active.log
+   * @return SemaphoreHandle_t for log file mutex
+   */
+  SemaphoreHandle_t getLogMutex() const;
+
+  /**
+   * Delete first entry from active.log
+   * Thread-safe: protected by log_mutex
+   * Used by NetworkLogger after successful send and ack
+   * Reads all lines, skips first, rewrites file
+   * @return true if deleted successfully, false on error or empty file
+   */
+  bool deleteFirstEntry();
+
 private:
   // ========================
   // Singleton Constructor (Private)

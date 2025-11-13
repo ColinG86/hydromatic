@@ -1,6 +1,7 @@
 #include "freertos_tasks.h"
 #include "wifi_manager.h"
 #include "time_manager.h"
+#include "network_logger.h"
 #include <Arduino.h>
 
 // ========================
@@ -8,6 +9,7 @@
 // ========================
 
 QueueHandle_t wifiStatusQueue = NULL;
+QueueHandle_t networkCommandQueue = NULL;
 
 // ========================
 // Global State Tracking
@@ -333,9 +335,28 @@ void wifiTask(void* pvParameters) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(50);  // Run every 50ms
 
+  // Debug: Track iterations
+  unsigned long iteration = 0;
+  unsigned long lastDebugTime = 0;
+
   while (1) {
     // Wait until it's time to run again (every 50ms)
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+    // Debug output every 5 seconds
+    iteration++;
+    unsigned long now = millis();
+    if (now - lastDebugTime >= 5000) {
+      Serial.printf("[WiFiTask] Running (iteration %lu, WiFi: %s)\n",
+                    iteration,
+                    pWiFiManager->isConnected() ? "CONNECTED" : "DISCONNECTED");
+      if (pWiFiManager->isConnected()) {
+        Serial.printf("           IP: %s, SSID: %s\n",
+                      WiFi.localIP().toString().c_str(),
+                      pWiFiManager->getCurrentSSID().c_str());
+      }
+      lastDebugTime = now;
+    }
 
     // Run WiFiManager state machine (non-blocking)
     pWiFiManager->handle();
@@ -404,9 +425,23 @@ void timeTask(void* pvParameters) {
 
   bool wifiIsConnected = false;
 
+  // Debug: Track iterations
+  unsigned long iteration = 0;
+  unsigned long lastDebugTime = 0;
+
   while (1) {
     // Wait until it's time to run again (every 1000ms)
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+    // Debug output every 10 seconds
+    iteration++;
+    unsigned long now = millis();
+    if (now - lastDebugTime >= 10000) {
+      Serial.printf("[TimeTask] Running (iteration %lu, NTP confident: %s)\n",
+                    iteration,
+                    pTimeManager->isTimeConfident() ? "YES" : "NO");
+      lastDebugTime = now;
+    }
 
     // Try to receive WiFi status events (non-blocking)
     // We check if WiFi has changed to trigger NTP sync
@@ -427,12 +462,49 @@ void timeTask(void* pvParameters) {
 }
 
 // ========================
+// Network Logger Task
+// ========================
+
+/**
+ * Network Logger Task
+ * Handles TCP log synchronization with timestamp calculation
+ * Reads from active.log, sends to TCP server with acks
+ * Sends heartbeats when idle, receives commands from server
+ * Runs on core 0
+ */
+void networkLoggerTask(void* pvParameters) {
+  // Get reference to NetworkLogger (passed as parameter)
+  NetworkLogger* pNetLogger = (NetworkLogger*)pvParameters;
+
+  Serial.println("[FreeRTOS] Network logger task started");
+
+  // Debug: Track iterations
+  unsigned long iteration = 0;
+  unsigned long lastDebugTime = 0;
+
+  // Main loop - NetworkLogger::handle() manages all logic
+  while (1) {
+    // Debug output every 5 seconds
+    iteration++;
+    unsigned long now = millis();
+    if (now - lastDebugTime >= 5000) {
+      Serial.printf("[NetLogTask] Running (iteration %lu)\n", iteration);
+      lastDebugTime = now;
+    }
+
+    pNetLogger->handle();
+    // Small yield to prevent watchdog (handle() already has delays)
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+// ========================
 // Main Orchestration Task
 // ========================
 
 /**
  * Main Orchestration Task
- * Subscribes to WiFi status queue
+ * Subscribes to WiFi status queue and network command queue
  * Handles system orchestration and OTA updates
  * Replaces traditional Arduino loop() with event-driven architecture
  *
@@ -444,7 +516,7 @@ void mainTask(void* pvParameters) {
   Serial.println("[FreeRTOS] Main task started");
 
   // Get reference to TimeManager for testing
-  extern TimeManager timeManager;
+  // extern TimeManager timeManager;
 
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(100);  // Run every 100ms
@@ -478,12 +550,25 @@ void mainTask(void* pvParameters) {
       testState.wifiConnected = wifiEvent.is_connected;
     }
 
-    // Run TimeManager tests every 1000ms
-    unsigned long now = millis();
-    if (now - lastTestRun >= 1000) {
-      lastTestRun = now;
-      testTimeManager(&timeManager);
+    // Try to receive network commands (non-blocking)
+    NetworkCommand netCmd;
+    if (xQueueReceive(networkCommandQueue, &netCmd, 0) == pdTRUE) {
+      // Process command
+      Serial.printf("[MainTask] Received network command: %s\n", netCmd.type);
+
+      // Handle commands
+      if (strcmp(netCmd.type, "status") == 0) {
+        Serial.println("[MainTask] Status command already logged by NetworkLogger");
+      }
+      // Add more command handlers here as needed
     }
+
+    // Run TimeManager tests every 1000ms
+    // unsigned long now = millis();
+    // if (now - lastTestRun >= 1000) {
+    //   lastTestRun = now;
+    //   testTimeManager(&timeManager);
+    // }
   }
 }
 
@@ -494,7 +579,7 @@ void mainTask(void* pvParameters) {
 /**
  * Initialize all FreeRTOS infrastructure
  * Creates task queues and starts all tasks
- * Called from setup() after WiFiManager and TimeManager are initialized
+ * Called from setup() after WiFiManager, TimeManager, and NetworkLogger are initialized
  */
 void initializeFreeRTOS() {
   Serial.println("[FreeRTOS] Initializing FreeRTOS infrastructure...");
@@ -507,9 +592,23 @@ void initializeFreeRTOS() {
   }
   Serial.println("[FreeRTOS] WiFi status queue created");
 
+  // Create network command queue (queue for 5 commands)
+  networkCommandQueue = xQueueCreate(5, sizeof(NetworkCommand));
+  if (networkCommandQueue == NULL) {
+    Serial.println("[FreeRTOS] ERROR: Failed to create network command queue!");
+    return;
+  }
+  Serial.println("[FreeRTOS] Network command queue created");
+
   // Get pointers to global manager instances
   extern WiFiManager wifiManager;
   extern TimeManager timeManager;
+  extern NetworkLogger networkLogger;
+
+  // Initialize NetworkLogger (needs command queue to be created first)
+  Serial.println("[FreeRTOS] Initializing NetworkLogger...");
+  networkLogger.begin("/data/config.json", &timeManager, networkCommandQueue);
+  Serial.println("[FreeRTOS] NetworkLogger initialized");
 
   // Create WiFi management task
   BaseType_t xReturned = xTaskCreate(
@@ -540,6 +639,22 @@ void initializeFreeRTOS() {
     return;
   }
   Serial.println("[FreeRTOS] Time sync task created");
+
+  // Create network logger task (pinned to core 0)
+  xReturned = xTaskCreatePinnedToCore(
+    networkLoggerTask,                     // Task function
+    "NetLogTask",                          // Task name
+    TASK_STACK_NETLOG / 4,                 // Stack size in words
+    (void*)&networkLogger,                 // Parameter (NetworkLogger pointer)
+    TASK_PRIORITY_NETLOG,                  // Priority
+    NULL,                                  // Task handle
+    0                                      // Core 0
+  );
+  if (xReturned != pdPASS) {
+    Serial.println("[FreeRTOS] ERROR: Failed to create network logger task!");
+    return;
+  }
+  Serial.println("[FreeRTOS] Network logger task created (core 0)");
 
   // Create main orchestration task
   xReturned = xTaskCreate(

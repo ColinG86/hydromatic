@@ -395,6 +395,82 @@ bool Logger::appendToLog(const String& entry) {
 }
 
 // ========================
+// NetworkLogger Support Methods
+// ========================
+
+SemaphoreHandle_t Logger::getLogMutex() const {
+  return log_mutex;
+}
+
+bool Logger::deleteFirstEntry() {
+  // Take mutex with 1000ms timeout
+  if (log_mutex != nullptr) {
+    if (xSemaphoreTake(log_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+      Serial.println("[LOGGER] deleteFirstEntry: Mutex timeout");
+      return false;
+    }
+  }
+
+  // Check if file exists
+  if (!SPIFFS.exists(LOG_FILE_PATH)) {
+    if (log_mutex != nullptr) {
+      xSemaphoreGive(log_mutex);
+    }
+    return false;  // No file to delete from
+  }
+
+  // Read all lines from log file
+  File f = SPIFFS.open(LOG_FILE_PATH, FILE_READ);
+  if (!f) {
+    if (log_mutex != nullptr) {
+      xSemaphoreGive(log_mutex);
+    }
+    Serial.println("[LOGGER] deleteFirstEntry: Failed to open log file for reading");
+    return false;
+  }
+
+  std::vector<String> lines;
+  while (f.available()) {
+    String line = f.readStringUntil('\n');
+    if (line.length() > 0) {
+      line += "\n";
+      lines.push_back(line);
+    }
+  }
+  f.close();
+
+  // Check if file is empty
+  if (lines.size() == 0) {
+    if (log_mutex != nullptr) {
+      xSemaphoreGive(log_mutex);
+    }
+    return false;  // Nothing to delete
+  }
+
+  // Rewrite file without first line
+  f = SPIFFS.open(LOG_FILE_PATH, FILE_WRITE);  // Overwrites
+  if (!f) {
+    if (log_mutex != nullptr) {
+      xSemaphoreGive(log_mutex);
+    }
+    Serial.println("[LOGGER] deleteFirstEntry: Failed to open log file for writing");
+    return false;
+  }
+
+  // Write all lines except first
+  for (size_t i = 1; i < lines.size(); i++) {
+    f.print(lines[i]);
+  }
+  f.close();
+
+  if (log_mutex != nullptr) {
+    xSemaphoreGive(log_mutex);
+  }
+
+  return true;
+}
+
+// ========================
 // Query Methods
 // ========================
 

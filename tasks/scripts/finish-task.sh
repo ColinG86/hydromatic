@@ -39,10 +39,21 @@ if [ ! -f "$TASK_FILE" ]; then
     exit 1
 fi
 
+# Validate JSON first
+if ! jq empty "$TASK_FILE" 2>/dev/null; then
+    echo "Error: Task file contains invalid JSON: $TASK_FILE"
+    echo "  Please fix the JSON syntax before finishing the task"
+    exit 1
+fi
+
 # Check if acceptance criteria are documented
 if [ "$SKIP_CHECK" -eq 0 ]; then
-    criteria_count=$(jq '.acceptance_criteria | length' "$TASK_FILE")
-    if [ "$criteria_count" -eq 0 ]; then
+    criteria_count=$(jq '.acceptance_criteria | length' "$TASK_FILE" 2>/dev/null)
+    if [ -z "$criteria_count" ]; then
+        echo "Error: Could not read acceptance criteria from task file"
+        exit 1
+    fi
+    if [ "$criteria_count" -eq 0 ] 2>/dev/null; then
         echo "⚠️  Warning: Task has no acceptance criteria defined"
         echo "  These should have been defined before starting"
         echo "  Use --skip-criteria-check to bypass this warning"
@@ -54,11 +65,22 @@ fi
 timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 temp_file=$(mktemp)
 
-jq --arg status "completed" \
+if ! jq --arg status "completed" \
    --arg updated "$timestamp" \
    --arg test_summary "$TEST_SUMMARY" \
    '.status = $status | .updated = $updated | .verification = {tested: true, test_date: $updated, test_results: $test_summary, status: "success"}' \
-   "$TASK_FILE" > "$temp_file"
+   "$TASK_FILE" > "$temp_file" 2>/dev/null; then
+    echo "Error: Failed to update task file with jq"
+    rm -f "$temp_file"
+    exit 1
+fi
+
+# Verify the output is valid JSON
+if ! jq empty "$temp_file" 2>/dev/null; then
+    echo "Error: jq produced invalid JSON output"
+    rm -f "$temp_file"
+    exit 1
+fi
 
 # Move to completed directory
 mv "$temp_file" "$COMPLETED_FILE"

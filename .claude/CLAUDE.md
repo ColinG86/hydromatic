@@ -300,4 +300,30 @@ Scripts handle all file updates. **Agents only call scripts.**
 
 ---
 
-**Last Updated**: 2025-11-11
+# ESP32 Serial Debugging
+
+**Use these scripts** instead of `pio device monitor` or `screen` - they work reliably.
+
+## Serial Scripts (temp/)
+
+**serial-monitor.py** - Capture serial output to file and stdout
+```bash
+./temp/serial-monitor.py [duration_seconds] [output_file]
+# Default: 10 seconds, saves to /tmp/serial.log
+```
+
+**reset-device.py** - Hardware reset ESP32 via DTR/RTS
+```bash
+./temp/reset-device.py
+```
+
+**Combined pattern** - Reset and capture boot sequence:
+```bash
+./temp/reset-device.py && sleep 1 && ./temp/serial-monitor.py 15 /tmp/esp32_boot.log
+```
+
+**Port:** `/dev/ttyUSB0` | **Baud:** `115200`
+
+---
+
+**Last Updated**: 2025-11-14

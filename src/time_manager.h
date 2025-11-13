@@ -151,6 +151,20 @@ public:
   uint32_t getMillisSinceSyncTime();
 
   // ========================
+  // NTP History Methods (for NetworkLogger)
+  // ========================
+
+  /**
+   * Get NTP sync information for a specific boot sequence
+   * Used by NetworkLogger to calculate timestamps for log entries
+   * @param boot_seq Boot sequence number to look up
+   * @param[out] ntp_sync_time Unix timestamp when NTP synced (0 if not found)
+   * @param[out] sync_uptime_ms Device uptime when NTP synced (0 if not found)
+   * @return true if boot_seq found with NTP sync, false otherwise
+   */
+  bool getNTPHistoryForBoot(uint32_t boot_seq, time_t& ntp_sync_time, uint32_t& sync_uptime_ms);
+
+  // ========================
   // Timezone Methods
   // ========================
 
@@ -198,6 +212,9 @@ private:
   char timezone[64];                    // POSIX TZ string (e.g., "UTC0")
   uint16_t ntp_timeout_seconds;         // NTP sync timeout in seconds
   uint32_t confidence_window_hours;     // Hours of sync confidence validity
+
+  static const char* NTP_HISTORY_PATH;  // "/data/ntp_history.json"
+  static const int MAX_BOOT_HISTORY = 10; // Keep last 10 boots
 
   // ========================
   // Time State
@@ -299,6 +316,21 @@ private:
    * @return State name (e.g., "SYNCING", "SUCCESS")
    */
   static const char* getNTPStateString(NTPSyncState state);
+
+  /**
+   * Update NTP history file with sync information for current boot
+   * Called internally when NTP sync succeeds
+   * @param boot_seq Boot sequence number
+   * @param ntp_sync_time Unix timestamp when sync occurred
+   * @param sync_uptime_ms Device uptime when sync occurred
+   */
+  void updateNTPHistory(uint32_t boot_seq, time_t ntp_sync_time, uint32_t sync_uptime_ms);
+
+  /**
+   * Load NTP history from file
+   * Initializes to empty array if file missing or corrupted
+   */
+  void loadNTPHistory();
 };
 
 #endif // TIME_MANAGER_H

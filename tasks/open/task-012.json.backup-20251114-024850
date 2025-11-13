@@ -1,0 +1,321 @@
+{
+  "id": "task-012",
+  "created": "2025-11-11T17:43:59Z",
+  "updated": "2025-11-14T10:00:00Z",
+  "title": "Create NetworkLogger task for TCP sync with timestamp calculation and boot sequencing",
+  "status": "in-progress",
+  "priority": "high",
+  "description": "Implement dedicated FreeRTOS task (core 0) that handles all TCP communication for logging, system monitoring, and remote control. Task reads unsent log entries from /data/active.log, calculates timestamps based on NTP sync history, sends JSON-line messages to server, waits for per-entry acknowledgments, deletes confirmed entries, and sends heartbeat with system stats every 1 second of idle time. Handles reconnection with silent backoff. Completely decoupled from application logic (core 1). Non-blocking by design.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "NetworkLogger task created in src/network_logger.h/.cpp",
+    "Task reads TCP server address and port from config.json",
+    "Maintains /data/ntp_history.json tracking NTP sync per boot",
+    "Connects to server at startup with 5-10 second timeout",
+    "Reads first unconfirmed entry from /data/active.log: {\"boot_seq\":3,\"uptime_ms\":45000,\"seq\":42,...}",
+    "Mutex protect active.log reads/deletes to prevent corruption with concurrent Logger writes",
+    "Detect corrupted JSON lines on read: if parsing fails, wrap in new entry {\"level\":\"error\",\"msg\":\"Corrupted log entry detected and skipped: ...raw bytes...\"}, log it, skip corrupted entry",
+    "Calculates ts on send: if boot_seq synced NTP, compute ts from (current_time - current_uptime_ms + entry_uptime_ms); else ts=null",
+    "Sends JSON-line entry to server: {\"boot_seq\":3,\"uptime_ms\":45000,\"seq\":42,\"ts\":null|\"...\",\"level\":\"...\",\"msg\":\"...\",\"system\":{...}}\n",
+    "Waits for per-entry ack: {\"ack\":1} with reasonable timeout",
+    "On ack: deletes entry from active.log (mutex protected), reads next entry",
+    "On ack timeout: silently retries with exponential backoff (5s, 10s, 30s, then 30s steady) - NO logging of transient failures",
+    "Track last_send_time after each successful send or heartbeat",
+    "If > 1 second idle (no entries to send): generate and send heartbeat directly",
+    "Heartbeat format: {\"boot_seq\":3,\"uptime_ms\":45000,\"ts\":null|\"...\",\"type\":\"heartbeat\",\"system\":{...}} - does NOT write to active.log",
+    "Heartbeat includes same system stats as log entries: heap_free, heap_used, uptime_ms, free_psram, task_count, spiffs_free, spiffs_used",
+    "Heartbeat ts calculated same way as log entries (null if boot never synced NTP)",
+    "Waits for heartbeat ack: {\"ack\":1} with reasonable timeout (validates bidirectional connection)",
+    "On heartbeat ack timeout: silently retries next second - NO logging (server detects from heartbeat gaps)",
+    "Non-blocking throughout (timeouts, no indefinite waits)",
+    "Task runs on core 0, independent from application",
+    "Receive commands from server: {\"cmd\":\"status\"} - JSON-line format",
+    "Command queue (FreeRTOS) to pass commands to application task (core 1) without blocking network task",
+    "Status command: return system stats snapshot, log as: {\"level\":\"info\",\"msg\":\"Status requested\",\"system\":{...},\"cmd_response\":true}",
+    "Non-blocking command handling: queue command, don't wait for execution",
+    "Config.json includes tcp_server_host, tcp_server_port, tcp_timeout_ms, heartbeat_interval_ms (default 1000)",
+    "Tested: logs sync with calculated ts, null ts for unsync boots, acks work, heartbeats every 1s idle, silent retries, corrupted entries handled, status command works, no blocking"
+  ],
+  "investigation": [
+    {
+      "timestamp": "2025-11-12T01:50:00Z",
+      "action": "Discussed timestamp and NTP sync architecture with user",
+      "finding": "Final design: Device never stores ts in active.log, only uptime_ms+boot_seq+seq. NetworkLogger calculates ts on send based on NTP sync history. Handles multiple power cycles without network: ts becomes null for unsync boots. Perfect ordering via (boot_seq, uptime_ms, seq). No transient failure logging—server detects via heartbeat gaps. Silent retries with backoff."
+    },
+    {
+      "timestamp": "2025-11-13T08:00:00Z",
+      "action": "Implementation completed - all modules coded and integrated",
+      "finding": "Created: 1) Logger extensions (getLogMutex, deleteFirstEntry), 2) TimeManager NTP history (/data/ntp_history.json with last 10 boots), 3) NetworkLogger module (network_logger.h/.cpp) with full TCP sync logic, 4) FreeRTOS integration (networkCommandQueue, networkLoggerTask on core 0). Build SUCCESS: 44.1% Flash (867KB), 22.9% RAM (74KB). All code compiles cleanly."
+    },
+    {
+      "timestamp": "2025-11-13T08:11:00Z",
+      "action": "Initial on-device testing - TCP server running, device uploaded",
+      "finding": "BUG DISCOVERED: Device connects to TCP server successfully (192.168.0.2:62342) but sends NO data. No heartbeats received despite 1-second interval requirement. Log file remains empty (0 bytes). Root cause: shouldSendHeartbeat() returns false when last_send_time==0, preventing first heartbeat. Fix applied: Initialize last_send_time=millis() on first call. Firmware re-uploaded but device not yet verified after fix."
+    },
+    {
+      "timestamp": "2025-11-13T19:50:00Z",
+      "action": "Deep investigation - WiFi status check and DNS resolution issues",
+      "finding": "CRITICAL BUGS FOUND AND FIXED: (1) WiFi Status Check Missing - NetworkLogger attempted TCP connection WITHOUT checking if WiFi is connected. Added WiFi.status() == WL_CONNECTED check before connectToServer(). (2) mDNS IPv6 Issue - avahi-resolve returns IPv6 address (fe80::...) for 'work-laptop.local', but ESP32 WiFiClient cannot handle IPv6 or mDNS properly. Updated data/config.json to use direct IPv4 address '192.168.0.4' instead of hostname. (3) Heartbeat Timer Init - Fixed last_send_time initialization in connectToServer() to enable heartbeat immediately after connection. All fixes applied, firmware rebuilt and uploaded, filesystem with new config uploaded."
+    },
+    {
+      "timestamp": "2025-11-13T20:10:00Z",
+      "action": "Post-fix testing with fresh server and clean device reset",
+      "finding": "DEVICE CONNECTS BUT STILL NO DATA: TCP server restarted cleanly, device reset and reconnected successfully at 20:04:20 from 192.168.0.2:62414. Connection verified working (server sees device, connection test from host succeeds). However, ZERO bytes received - no heartbeats, no log entries. Log file remains 0 bytes after 7+ minutes. Serial output shows only '[NETLOG] Connection FAILED (WiFi status: 3)' repeated with garbage 'status: 3)' flooding output. DIAGNOSIS: WiFi status 3 = WL_CONNECTED, so WiFi IS connected. Problem is deeper - either: (A) NetworkLogger task not running at all, (B) handle() loop blocked/stuck, (C) sendHeartbeat() called but tcp_client.print() failing silently, (D) Device in permanent backoff state, (E) Mutex deadlock on log_mutex. CODE REVIEW SHOWS: Logic appears sound - connectToServer() checks WiFi, connection succeeds (per server log), should send heartbeat every 1s if no log entries. CRITICAL: Need comprehensive debug Serial.println() statements added throughout NetworkLogger::handle() to trace execution flow."
+    },
+    {
+      "timestamp": "2025-11-13T21:00:00Z",
+      "action": "Debugging attempt with comprehensive Serial logging - FAILED",
+      "finding": "ATTEMPT 1 - Added Debug Logging: Added ~15 Serial.printf/println statements with Serial.flush() throughout handle(), connectToServer(), sendHeartbeat(), shouldSendHeartbeat() to trace execution flow. Also added tcp_client.stop() before reconnect attempts (line 270) + 100ms vTaskDelay after stop (line 271). Increased TASK_STACK_NETLOG from 8KB to 16KB. Build successful (Flash 44.3%, RAM 22.9%). Upload successful. RESULT: Device entered BOOT LOOP - rapid blinking LED, cannot upload (serial corruption). Serial output unreadable (garbled or repetitive 'ning' fragments). DIAGNOSIS: Serial.flush() likely triggering watchdog timeout, OR memory exhaustion from debug strings, OR the vTaskDelay blocking scheduler. ATTEMPT 2 - Commented Out Debug Logging: Kept core fixes (tcp_client.stop(), 16KB stack, vTaskDelay) but commented out ALL Serial debug statements. Build successful (Flash 44.1%, RAM 22.9%). Upload successful (retry after USB issue). Waited 15 seconds for boot. RESULT: Device STILL NOT CONNECTING - no new TCP connection to server, old connection from 20:04:20 still idle with socket timeouts, data file remains 0 bytes. Device appears to boot (no rapid blinking) but either crashes during init, or NetworkLogger task not starting, or WiFi not connecting. Cannot verify boot state without serial access. CONCLUSION: Even minimal code changes (tcp_client.stop() + vTaskDelay) prevent proper boot/connection. Problem likely: (1) vTaskDelay during early boot before scheduler ready, (2) tcp_client.stop() on non-existent socket causing crash, (3) 16KB stack causing memory pressure. RECOMMENDATION: Revert all changes and try ONLY tcp_client.stop() WITHOUT delay, OR full revert to last working state."
+    },
+    {
+      "timestamp": "2025-11-14T10:00:00Z",
+      "action": "Further isolation of pre-setup() boot crash",
+      "finding": "The device was still boot-looping even with all global manager objects and FreeRTOS tasks commented out. The `main.cpp`'s `setup()` function was reduced to only `delay(100); Serial.begin(115200); delay(100); Serial.println(\"\\n\\n[BOOT] Device booting..."); delay(500);`. When the `Serial.println` and its associated `delay` were commented out, the device stopped boot-looping and produced no serial output. This indicates the boot-loop is triggered by the `Serial.println` call itself (or something related to serial output) when the global objects are *not* instantiated. This is a highly counter-intuitive finding and suggests a deeper, possibly environment-specific or library-interaction issue."
+    },
+    {
+      "timestamp": "2025-11-14T14:30:00Z",
+      "action": "Created reliable serial monitoring infrastructure and confirmed boot loop behavior",
+      "finding": "TOOLING SUCCESS + BOOT LOOP CONFIRMED: Created temp/serial-monitor.py (captures serial to file and stdout with timestamps) and temp/reset-device.py (hardware reset via DTR/RTS). These tools now provide reliable serial debugging. Removed leading newlines from Serial.println (changed from '\\n\\n[BOOT]...' to '[BOOT]...') and uploaded. RESULT: Boot loop continues - device prints '[BOOT] Device booting...' repeatedly every ~500ms, continuously resetting. Current code has ONLY: Serial.begin(115200), Serial.println('[BOOT] Device booting...'), delay(500) in setup(). All global managers (WiFiManager, TimeManager, NetworkLogger) are commented out. All FreeRTOS tasks are commented out. This is a **watchdog timeout** - the ESP32 watchdog is resetting the device during or after the delay(500). HYPOTHESIS: (1) Default watchdog timeout on ESP32 is very short (possibly <1 second), OR (2) Serial.println() is blocking too long and triggering watchdog, OR (3) delay(500) itself is exceeding watchdog limit, OR (4) There's a conflict with platformio.ini settings (monitor_filters, upload_speed, etc.) causing serial operations to block. CRITICAL INSIGHT: This is NOT a code bug - this is an ESP32 watchdog configuration issue. The device never gets past setup() before being reset."
+    }
+  ],
+  "solution": {
+    "approach": "FreeRTOS task that loops: (1) Check for commands on TCP socket (non-blocking), queue any to application, (2) Check if entry in active.log (mutex protected), (3) If yes: Connect if needed, read entry with corruption check, calculate ts from ntp_history.json (null if unsync), send with ts, get ack, delete entry (mutex), update last_send_time, (4) If corrupted: wrap error entry and requeue, (5) If no entries: check if > 1s idle, if yes generate heartbeat with calculated ts, send directly (no file), wait for ack, update last_send_time, (6) Small delay. All with timeouts and silent exponential backoff. Logger and NetworkLogger interact through files (mutex protected) and command queue.",
+    "files_modified": [
+      "src/logger.h - Added getLogMutex() and deleteFirstEntry() methods",
+      "src/logger.cpp - Implemented mutex getter and line-by-line deletion with rewrite",
+      "src/time_manager.h - Added NTP_HISTORY_PATH, MAX_BOOT_HISTORY, getNTPHistoryForBoot()",
+      "src/time_manager.cpp - Added loadNTPHistory(), updateNTPHistory() with last-10-boots array pruning, integrated with NTP sync success",
+      "src/network_logger.h - Complete NetworkLogger class with TCP client, timestamp calculation, heartbeat, command handling",
+      "src/network_logger.cpp - Full implementation: connectToServer(), readFirstEntry(), calculateTimestamp(), sendEntry(), waitForAck(), sendHeartbeat(), checkForCommands(), handleCorruptedEntry(), exponential backoff. FIXES APPLIED: Added #include <WiFi.h>, WiFi.status() check in connectToServer(), connection failure logging with status code, last_send_time initialization after successful connection",
+      "src/freertos_tasks.h - Added TASK_PRIORITY_NETLOG, TASK_STACK_NETLOG, NetworkCommand struct, networkCommandQueue, networkLoggerTask() declaration",
+      "src/freertos_tasks.cpp - Created networkCommandQueue (size 5), implemented networkLoggerTask(), integrated NetworkLogger.begin() with queue handle, pinned task to core 0",
+      "src/main.cpp - Added NetworkLogger global instance, integrated initialization sequence",
+      "data/config.json - Changed tcp_server_host from 'work-laptop.local' to '192.168.0.4' to fix mDNS/IPv6 resolution issue"
+    ],
+    "changes": "COMPLETED: All code implemented and compiles. Logger exposes mutex for synchronization. TimeManager maintains /data/ntp_history.json with {\"boots\":[{boot_seq,ntp_sync_time,sync_uptime_ms},...]} format, auto-updates on NTP success, keeps last 10 boots. NetworkLogger task: Reads active.log line-by-line (mutex protected), calculates ts=(ntp_sync_time - sync_uptime_ms + entry_uptime_ms) from history lookup (null if boot_seq not found), sends JSON-line with ts field, waits for {\"ack\":1}, deletes confirmed entry. Heartbeats: Generated every 1s idle with same ts calculation, sent directly (no file write). Commands: Receives {\"cmd\":\"status\"} from server, queues to networkCommandQueue for mainTask processing. Silent exponential backoff [5s,10s,30s]. Task runs on core 0 (priority 2, 8KB stack). THREE CRITICAL BUGS FIXED: (1) Added WiFi.status() check before TCP connection attempts, (2) Changed config.json to use IPv4 address instead of mDNS hostname, (3) Initialize last_send_time=millis() immediately after successful connection to enable first heartbeat. All fixes uploaded to device."
+  },
+  "verification": {
+    "tested": false,
+    "test_date": "2025-11-13T20:10:00Z",
+    "test_results": "IN PROGRESS - Build successful (2025-11-13 19:43), firmware and filesystem uploaded. Three critical bugs fixed. TCP server running cleanly. Device connects successfully (verified at 20:04:20). CONNECTION WORKS but ZERO DATA RECEIVED after 7+ minutes. Heartbeats NOT arriving (expected every 1 second). Log sync NOT tested yet. Problem appears to be in execution flow, not connection. Serial output shows '[NETLOG] Connection FAILED (WiFi status: 3)' repeatedly despite WiFi being connected (status 3 = WL_CONNECTED). REQUIRES: Debug logging added to NetworkLogger::handle() to trace execution: check if task is running, if handle() is being called, if readFirstEntry() returns false, if shouldSendHeartbeat() is called, if sendHeartbeat() is reached, where tcp_client.print() fails.",
+    "status": "blocked"
+  },
+  "blockers": [
+    {
+      "description": "NetworkLogger task executing but not sending data despite successful TCP connection",
+      "details": "CURRENT STATE (2025-11-13 20:10): Device successfully connects to TCP server (192.168.0.2:62414 at 20:04:20), TCP socket remains open (server shows periodic socket timeouts, indicating idle connection). However, ZERO bytes transmitted - no heartbeats (should be every 1 second), no log entries. Serial output shows '[NETLOG] Connection FAILED (WiFi status: 3)' message flooding output, suggesting connectToServer() is being called repeatedly and failing. WiFi status 3 = WL_CONNECTED, so WiFi is working. HYPOTHESIS: Either (A) connectToServer() succeeds but sets is_connected=false somehow, causing infinite retry loop, OR (B) handle() reaches heartbeat code but sendHeartbeat() fails silently in tcp_client.print() or waitForAck(), OR (C) Device has old stale connection (192.168.0.2:62342 from earlier) that's blocking new sends, OR (D) readFirstEntry() returns true for non-existent entries, blocking heartbeat path.",
+      "diagnosis": {
+        "symptoms": [
+          "Serial shows '[NETLOG] Connection FAILED (WiFi status: 3)' repeatedly",
+          "Server log shows device connected but receiving no data (0 bytes after 7+ minutes)",
+          "WiFi status 3 = WL_CONNECTED (WiFi working correctly)",
+          "TCP server accepting connections (connectivity test from host succeeds)",
+          "Serial output has garbage 'status: 3)' flooding (suggests print corruption or buffer overflow)"
+        ],
+        "working_components": [
+          "Build system (compiles cleanly, 44.1% flash)",
+          "Firmware upload (esptool succeeds)",
+          "Filesystem upload (SPIFFS config.json updated with IPv4)",
+          "WiFi connection (status 3 = WL_CONNECTED)",
+          "TCP server (listening on 0.0.0.0:5000, accepts connections)",
+          "Device TCP stack (connects to server successfully)"
+        ],
+        "failing_components": [
+          "Data transmission (tcp_client.print() not working or not called)",
+          "Heartbeat generation (no heartbeats received)",
+          "Log entry sync (not tested yet, likely same issue)",
+          "Serial output (possibly buffer overflow or format corruption)"
+        ],
+        "code_review_findings": [
+          "connectToServer() at network_logger.cpp:225-246: Checks WiFi.status(), attempts tcp_client.connect(), prints success/failure. If connect() fails, prints '[NETLOG] Connection FAILED (WiFi status: X)' - this is what we're seeing repeatedly.",
+          "handle() at network_logger.cpp:60-162: Should check backoff, connect if needed, read log entry, else send heartbeat. Logic looks sound.",
+          "sendHeartbeat() at network_logger.cpp:398-444: Builds JSON, calls tcp_client.print(), calls waitForAck(). Returns false if any step fails.",
+          "CRITICAL: No Serial.println() inside sendHeartbeat() to indicate if it's being called",
+          "CRITICAL: No Serial.println() in handle() to show execution path (which branch taken)",
+          "CRITICAL: Serial output corruption suggests possible stack overflow or memory corruption"
+        ],
+        "possible_root_causes": [
+          "1. tcp_client.connect() returning true but connection not actually usable (stale socket state)",
+          "2. tcp_client.print() failing silently without error (buffer full, socket closed mid-write)",
+          "3. Task stack overflow (8KB may be insufficient with JSON serialization + WiFiClient buffers)",
+          "4. Mutex deadlock: log_mutex held by another task, handle() blocked in readFirstEntry()",
+          "5. Backoff state stuck: next_retry_time set incorrectly, handle() returning early every time",
+          "6. shouldSendHeartbeat() logic broken: last_send_time not updating properly",
+          "7. WiFiClient library bug: connect() succeeds but subsequent operations fail",
+          "8. Memory corruption: StaticJsonDocument overflowing, corrupting stack/heap"
+        ]
+      },
+      "resolution_steps": [
+        "IMMEDIATE: Add comprehensive debug logging to identify execution flow",
+        "1. Add Serial.println() at START of NetworkLogger::handle(): 'handle() called, is_connected=%d, backoff=%lu'",
+        "2. Add Serial.println() before connectToServer(): 'Attempting connection...'",
+        "3. Add Serial.println() in sendHeartbeat(): 'sendHeartbeat() called' at start, 'JSON size: %d' after serialization, 'tcp_client.print() returned %d' after write",
+        "4. Add Serial.println() in shouldSendHeartbeat(): 'shouldSendHeartbeat: last=%lu, elapsed=%lu, interval=%d, result=%d'",
+        "5. Add Serial.println() after readFirstEntry(): 'readFirstEntry returned %d'",
+        "6. Increase task stack size from 8KB to 16KB (TASK_STACK_NETLOG = 16*1024) to rule out overflow",
+        "7. Add Serial.flush() after each println to ensure output before potential crash",
+        "8. Test: Rebuild, upload, reset device, watch serial output to see execution trace",
+        "9. If sendHeartbeat() is called but print fails: Check WiFiClient connection state, try tcp_client.stop() + reconnect",
+        "10. If sendHeartbeat() never called: Debug shouldSendHeartbeat() logic and handle() branching",
+        "11. If handle() not being called: Check FreeRTOS task creation, verify task didn't crash during init"
+      ],
+      "required_for_completion": "Data transmission working (heartbeats arriving at server every 1 second)"
+    }
+  ],
+  "related_tasks": [
+    "task-007",
+    "task-011"
+  ],
+  "tags": [
+    "firmware",
+    "logging",
+    "tcp",
+    "network",
+    "freertos",
+    "bidirectional",
+    "core-0"
+  ],
+  "debugging_info": {
+    "current_state": "Firmware uploaded with 3 critical fixes applied. Device connects to TCP server but sends no data. Requires debug logging to diagnose.",
+    "build_status": "SUCCESS - 867KB Flash (44.1%), 74KB RAM (22.9%), Build timestamp: 2025-11-13 19:43",
+    "last_upload": "2025-11-13 19:43 (firmware) + 19:45 (filesystem with IPv4 config)",
+    "tcp_server": {
+      "status": "RUNNING (restarted cleanly at 20:03:58)",
+      "command": "cd /home/colin/projects/hydromatic/server && python3 tcp_log_server.py --log-file /tmp/hydromatic_test.log 2>&1 | tee /tmp/tcp_server_live.log &",
+      "log_file": "/tmp/tcp_server_live.log (server log) + /tmp/hydromatic_test.log (device data)",
+      "port": "5000",
+      "last_connection": "Device connected from 192.168.0.2:62414 at 2025-11-13 20:04:20",
+      "connection_status": "Connected but idle (socket timeouts every 30s)",
+      "data_received": "0 bytes after 7+ minutes",
+      "old_connections": "Stale connection from 192.168.0.2:62342 (earlier test, may still be held by device)"
+    },
+    "device_state": {
+      "wifi_status": "3 (WL_CONNECTED - WiFi working)",
+      "tcp_connection": "Established to 192.168.0.4:5000",
+      "serial_output": "No output (after commenting out Serial.println in setup())",
+      "ip_address": "192.168.0.2",
+      "config_loaded": "Using 192.168.0.4 (IPv4 instead of work-laptop.local)",
+      "filesystem": "SPIFFS uploaded with new config.json at 19:45"
+    },
+    "known_bugs_fixed": [
+      {
+        "bug": "shouldSendHeartbeat() returns false when last_send_time==0, preventing initial heartbeat",
+        "location": "src/network_logger.cpp:573-581",
+        "fix": "Initialize last_send_time=millis() on first call to enable heartbeat timer",
+        "fix_applied": "2025-11-13T08:06:00Z",
+        "fix_uploaded": "2025-11-13T08:08:00Z",
+        "verified": "false - superseded by new fixes"
+      },
+      {
+        "bug": "connectToServer() attempts TCP connection without checking WiFi status first",
+        "location": "src/network_logger.cpp:225-246",
+        "fix": "Added #include <WiFi.h> and WiFi.status() == WL_CONNECTED check at start of connectToServer(). Returns false immediately if WiFi not connected.",
+        "fix_applied": "2025-11-13T19:43:00Z",
+        "fix_uploaded": "2025-11-13T19:43:30Z",
+        "verified": "partial - WiFi check works (status 3 detected) but connection still fails"
+      },
+      {
+        "bug": "mDNS hostname 'work-laptop.local' resolves to IPv6 (fe80::...), ESP32 WiFiClient cannot handle IPv6",
+        "location": "data/config.json tcp_logging.server_host",
+        "fix": "Changed server_host from 'work-laptop.local' to '192.168.0.4' (direct IPv4 address). Uploaded filesystem at 19:45.",
+        "fix_applied": "2025-11-13T19:44:00Z",
+        "fix_uploaded": "2025-11-13T19:45:00Z (pio run -t uploadfs)",
+        "verified": "false - device still failing to connect despite IPv4 address"
+      },
+      {
+        "bug": "last_send_time not initialized after successful connection, preventing first heartbeat",
+        "location": "src/network_logger.cpp:74-85 (handle() method after connectToServer() success)",
+        "fix": "Added last_send_time = millis() immediately after resetBackoff() when connection succeeds",
+        "fix_applied": "2025-11-13T19:43:00Z",
+        "fix_uploaded": "2025-11-13T19:43:30Z",
+        "verified": "false - heartbeat still not working"
+      }
+    ],
+    "current_issue": {
+      "symptom": "Device connects to TCP server but sends zero data for 7+ minutes",
+      "serial_output": "[NETLOG] Connection FAILED (WiFi status: 3) <repeated>",
+      "server_log": "Device connected from 192.168.0.2:62414 at 20:04:20, socket timeout every 30s (idle connection)",
+      "hypothesis": "connectToServer() is being called repeatedly despite successful connection, OR connection succeeds but is_connected flag not set properly, OR sendHeartbeat() fails silently",
+      "next_step": "Add debug Serial.println() throughout handle() and sendHeartbeat() to trace execution, increase stack size to rule out overflow"
+    },
+    "testing_commands": {
+      "rebuild_upload": "pio run -t upload",
+      "upload_filesystem": "pio run -t uploadfs",
+      "serial_monitor": "screen /dev/ttyUSB0 115200 (Ctrl+A K to exit)",
+      "check_server": "tail -f /tmp/tcp_server_live.log",
+      "check_data": "cat /tmp/hydromatic_test.log",
+      "test_server_conn": "python3 -c \"import socket; s=socket.socket(); s.settimeout(3); s.connect(('192.168.0.4',5000)); print('OK'); s.close()\"",
+      "reset_device": "python3 -c \"import serial; s=serial.Serial('/dev/ttyUSB0',115200); s.setDTR(False); s.setRTS(True); import time; time.sleep(0.1); s.setRTS(False); s.close()\"",
+      "kill_server": "pkill -9 -f tcp_log_server",
+      "start_server": "cd /home/colin/projects/hydromatic/server && python3 tcp_log_server.py --log-file /tmp/hydromatic_test.log 2>&1 | tee /tmp/tcp_server_live.log &"
+    },
+    "expected_behavior": {
+      "after_boot": "Within 10 seconds: WiFi connects, TimeManager syncs NTP (or fails), NetworkLogger connects to TCP server",
+      "after_connection": "Within 1 second: First heartbeat sent and acked",
+      "steady_state": "Heartbeat every 1 second when idle, log entries sent immediately when logged",
+      "tcp_server_log": "Should see JSON-line entries with {\"type\":\"heartbeat\",...} every 1 second",
+      "device_log_file": "/tmp/hydromatic_test.log should have JSON-line entries (one per line)"
+    },
+    "serial_debugging": {
+      "required_output": [
+        "[NETLOG] Initializing NetworkLogger...",
+        "[NETLOG] Config: server=192.168.0.4:5000, ack_timeout=2000ms, heartbeat=1000ms",
+        "[FreeRTOS] Network logger task created (core 0)",
+        "[NETLOG] Connecting to 192.168.0.4:5000...",
+        "[NETLOG] Connected to TCP server",
+        "Heartbeat activity (sendHeartbeat() calls or failures)"
+      ],
+      "current_output": "No output (after commenting out Serial.println in setup())",
+      "missing_output": "No task startup messages, no connection success, no heartbeat attempts",
+      "action": "Add Serial.println() at: handle() entry, before/after connectToServer(), start of sendHeartbeat(), before/after tcp_client.print(), shouldSendSendHeartbeat() calculation"
+    },
+    "acceptance_criteria_status": {
+      "code_complete": true,
+      "compiles": true,
+      "uploaded": true,
+      "tcp_server_running": true,
+      "device_connects": true,
+      "sends_data": false,
+      "heartbeats_working": false,
+      "log_sync_working": false,
+      "timestamp_calculation": "not tested",
+      "ack_handling": "not tested",
+      "corrupted_entry_handling": "not tested",
+      "command_reception": "not tested",
+      "silent_retries": "not tested",
+      "wifi_check": true,
+      "ipv4_config": true
+    },
+    "next_agent_start_here": {
+      "immediate_action": "Fix watchdog timeout issue preventing device boot. Current state: Device boot loops with only Serial.begin()+Serial.println()+delay(500) in setup(). DIAGNOSIS: ESP32 Task Watchdog Timer (TWDT) is triggering reset because setup() is taking too long OR not yielding to watchdog. FIX: Disable watchdog during setup(), or feed watchdog during delay(), or reduce delay time. Try platformio.ini build flag: build_flags = -DCONFIG_ESP_TASK_WDT=0 to disable Task WDT entirely during initial debugging.",
+      "files_to_modify": [
+        "platformio.ini - Add build_flags to disable Task Watchdog Timer",
+        "src/main.cpp - Once watchdog is disabled, re-enable all manager initialization to test full boot sequence"
+      ],
+      "watchdog_solutions": [
+        "OPTION 1 (Recommended): Add to platformio.ini build_flags: -DCONFIG_ESP_TASK_WDT=0 (disables Task WDT completely for debugging)",
+        "OPTION 2: Call esp_task_wdt_init(30, false) early in setup() to extend watchdog timeout to 30 seconds",
+        "OPTION 3: Remove all delay() calls from setup() and use non-blocking initialization",
+        "OPTION 4: Call esp_task_wdt_reset() before/after each delay() to feed the watchdog"
+      ],
+      "testing_steps": [
+        "1. Edit platformio.ini: Add 'build_flags = -DCONFIG_ESP_TASK_WDT=0' under [env:esp32dev]",
+        "2. Keep minimal setup() code: Serial.begin(115200); Serial.println('[BOOT] Testing...'); delay(2000);",
+        "3. Build and upload: pio run -t upload",
+        "4. Monitor serial: ./temp/reset-device.py && sleep 1 && ./temp/serial-monitor.py 15 /tmp/esp32_boot.log",
+        "5. EXPECTED: Device prints '[BOOT] Testing...' once and continues (no boot loop)",
+        "6. If successful: Gradually re-enable global managers one at a time (WiFiManager, then TimeManager, then NetworkLogger)",
+        "7. For each addition: Build, upload, test with serial monitor, verify no boot loop",
+        "8. Once all managers work: Re-enable FreeRTOS tasks one at a time",
+        "9. Final test: Full system boots, WiFi connects, TCP connection established, heartbeats flowing"
+      ],
+      "serial_monitoring_tools": {
+        "monitor_script": "./temp/serial-monitor.py [duration] [output_file]",
+        "reset_script": "./temp/reset-device.py",
+        "combined_test": "./temp/reset-device.py && sleep 1 && ./temp/serial-monitor.py 15 /tmp/esp32_boot.log"
+      },
+      "expected_findings": "After disabling watchdog: Device should boot successfully, print serial output, and continue running. This will allow adding back managers incrementally to identify which component (if any) is problematic. Once system boots fully, can re-enable watchdog with longer timeout (30s) suitable for WiFi+NTP initialization delays.",
+      "success_criteria": "Device boots without loop, all managers initialize, FreeRTOS tasks start, NetworkLogger connects to server, heartbeats arrive at /tmp/hydromatic_test.log every 1 second"
+    }
+  }
+}

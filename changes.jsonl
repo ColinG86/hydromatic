@@ -309,3 +309,128 @@
   "tested": false,
   "status": "completed"
 }
+{
+  "timestamp": "2025-11-12T19:53:36Z",
+  "type": "feature",
+  "component": "logger",
+  "summary": "Add getLogMutex() and deleteFirstEntry() for NetworkLogger integration",
+  "files": [
+    "/home/colin/projects/hydromatic/src/logger.h",
+    "/home/colin/projects/hydromatic/src/logger.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed",
+  "task": "task-012"
+}
+{
+  "timestamp": "2025-11-12T19:57:19Z",
+  "type": "feature",
+  "component": "time_manager",
+  "summary": "Add NTP history tracking to ntp_history.json for NetworkLogger timestamp calculation",
+  "files": [
+    "/home/colin/projects/hydromatic/src/time_manager.h",
+    "/home/colin/projects/hydromatic/src/time_manager.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed",
+  "task": "task-012"
+}
+{
+  "timestamp": "2025-11-12T19:59:31Z",
+  "type": "feature",
+  "component": "network_logger",
+  "summary": "Create NetworkLogger module for TCP log synchronization with timestamp calculation",
+  "files": [
+    "/home/colin/projects/hydromatic/src/network_logger.h",
+    "/home/colin/projects/hydromatic/src/network_logger.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed",
+  "task": "task-012"
+}
+{
+  "timestamp": "2025-11-13T07:38:11Z",
+  "type": "feature",
+  "component": "freertos",
+  "summary": "Integrate NetworkLogger task with FreeRTOS multi-tasking on core 0",
+  "files": [
+    "/home/colin/projects/hydromatic/src/freertos_tasks.h",
+    "/home/colin/projects/hydromatic/src/freertos_tasks.cpp",
+    "/home/colin/projects/hydromatic/src/main.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed",
+  "task": "task-012"
+}
+{
+  "timestamp": "2025-11-13T07:43:09Z",
+  "type": "fix",
+  "component": "network_logger",
+  "summary": "Fix compilation errors - include freertos_tasks.h and correct Logger access",
+  "files": [
+    "/home/colin/projects/hydromatic/src/network_logger.h",
+    "/home/colin/projects/hydromatic/src/network_logger.cpp",
+    "/home/colin/projects/hydromatic/src/time_manager.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": true,
+  "status": "completed",
+  "task": "task-012"
+}
+{
+  "timestamp": "2025-11-13T08:16:07Z",
+  "type": "doc",
+  "component": "task-012",
+  "summary": "Comprehensive task-012 update with implementation status, bug fixes, debugging info, and handoff instructions",
+  "files": [
+    "/home/colin/projects/hydromatic/tasks/open/task-012.json"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed",
+  "task": "task-012"
+}
+{
+  "timestamp": "2025-11-13T20:01:27Z",
+  "type": "doc",
+  "component": "task-tracking",
+  "summary": "Updated task-012.json to document hardware issue resolution and current state for handoff",
+  "files": [],
+  "agent": "claude",
+  "tags": [],
+  "tested": true,
+  "status": "completed",
+  "task": "task-012"
+}
+{
+  "timestamp": "2025-11-13T20:24:09Z",
+  "type": "feature",
+  "component": "NetworkLogger",
+  "summary": "Complete NetworkLogger with full runtime verification - heartbeats, TCP sync, and system monitoring working",
+  "files": [
+    "src/main.cpp",
+    "src/freertos_tasks.cpp",
+    "tasks/open/task-012.json"
+  ],
+  "agent": "claude",
+  "tags": [
+    "network",
+    "logging",
+    "tcp",
+    "freertos",
+    "verification"
+  ],
+  "tested": true,
+  "status": "completed",
+  "task": "task-012"
+}
