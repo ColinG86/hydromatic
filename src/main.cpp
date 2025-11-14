@@ -4,6 +4,7 @@
 #include "wifi_manager.h"
 #include "time_manager.h"
 #include "network_logger.h"
+#include "ota_manager.h"
 #include "freertos_tasks.h"
 
 // ========================
@@ -12,6 +13,7 @@
 WiFiManager wifiManager;
 TimeManager timeManager;
 NetworkLogger networkLogger;
+OTAManager otaManager;
 
 // ========================
 // Setup - Initialize Hardware and FreeRTOS
@@ -44,6 +46,11 @@ void setup() {
   Serial.println("[SETUP] Initializing TimeManager...");
   timeManager.begin("/data/config.json");
   Serial.println("[SETUP] TimeManager initialized");
+
+  // Initialize OTA Manager with config from SPIFFS
+  Serial.println("[SETUP] Initializing OTAManager...");
+  otaManager.begin("/data/config.json");
+  Serial.println("[SETUP] OTAManager initialized");
 
   // Initialize FreeRTOS infrastructure (creates tasks and queues)
   // NOTE: NetworkLogger.begin() is called inside initializeFreeRTOS()

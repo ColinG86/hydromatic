@@ -1,23 +1,8 @@
 {
-  "generated": "2025-11-13T20:31:13Z",
-  "open_count": 3,
-  "completed_count": 10,
+  "generated": "2025-11-14T14:04:07Z",
+  "open_count": 2,
+  "completed_count": 11,
   "open": [
-    {
-      "id": "task-004",
-      "title": "Implement OTA Manager module",
-      "priority": "critical",
-      "status": "open",
-      "keywords": [
-        "ota",
-        "firmware",
-        "updates",
-        "phase-1",
-        "critical"
-      ],
-      "created": "2025-11-11T08:37:32Z",
-      "updated": "2025-11-11T08:37:32Z"
-    },
     {
       "id": "task-005",
       "title": "Create config.json with WiFi, Time, and OTA settings",
@@ -90,6 +75,22 @@
       "created": "2025-11-11T08:36:57Z",
       "updated": "2025-11-12T12:23:35Z",
       "completed_date": "2025-11-12T12:23:35Z"
+    },
+    {
+      "id": "task-004",
+      "title": "Implement OTA Manager module",
+      "priority": "critical",
+      "status": "completed",
+      "keywords": [
+        "ota",
+        "firmware",
+        "updates",
+        "phase-1",
+        "critical"
+      ],
+      "created": "2025-11-11T08:37:32Z",
+      "updated": "2025-11-14T14:04:07Z",
+      "completed_date": "2025-11-14T14:04:07Z"
     },
     {
       "id": "task-007",

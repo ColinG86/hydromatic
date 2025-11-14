@@ -1,0 +1,222 @@
+{
+  "id": "task-004",
+  "created": "2025-11-11T08:37:32Z",
+  "updated": "2025-11-14T14:04:07Z",
+  "title": "Implement OTA Manager module",
+  "status": "completed",
+  "priority": "critical",
+  "description": "Create OTAManager class for wireless firmware updates via ArduinoOTA. Integrate with WiFi and Time managers. Track update progress.",
+  "assigned_to": "claude",
+  "acceptance_criteria": [
+    "OTAManager class created in src/ota_manager.h/.cpp",
+    "ArduinoOTA server initialized and configured",
+    "Device appears in Arduino IDE network uploads dropdown",
+    "Hostname set to hydromatic-XXXXXX format",
+    "Upload progress callbacks implemented",
+    "Error handling for auth failure and write errors",
+    "Public interface: begin(), handle(), isEnabled(), isUpdating(), getProgress(), getStatus()",
+    "OTA events logged",
+    "Tested: successful firmware upload via IDE, error handling, device restart"
+  ],
+  "investigation": [
+    {
+      "timestamp": "2025-11-14T12:00:00Z",
+      "action": "Analyzed existing manager pattern architecture",
+      "finding": "All managers follow consistent pattern: Constructor sets defaults, begin(configPath) loads config from SPIFFS, handle() runs state machine. WiFiManager, TimeManager, NetworkLogger all use this pattern."
+    },
+    {
+      "timestamp": "2025-11-14T12:05:00Z",
+      "action": "Reviewed config.json structure",
+      "finding": "OTA config already exists at /data/config.json with fields: enabled (bool), port (3232), hostname_prefix (hydromatic). No password field needed per user requirements."
+    },
+    {
+      "timestamp": "2025-11-14T12:10:00Z",
+      "action": "Examined FreeRTOS task architecture",
+      "finding": "mainTask() in freertos_tasks.cpp runs every 100ms, handles WiFi events and network commands. This is where OTAManager.handle() should be called. Global manager instances declared in main.cpp lines 10-14."
+    },
+    {
+      "timestamp": "2025-11-14T12:15:00Z",
+      "action": "Checked hostname generation pattern",
+      "finding": "WiFiManager sets hostname using pattern: hostname_prefix + MAC last 3 bytes (e.g., hydromatic-AABBCC). Same pattern should be used for OTA hostname. See wifi_manager.cpp:57-60."
+    },
+    {
+      "timestamp": "2025-11-14T12:20:00Z",
+      "action": "Reviewed platformio.ini dependencies",
+      "finding": "ArduinoOTA library needs to be added to lib_deps. Current libs: ArduinoJson, DNSServer, Update. ArduinoOTA is built into ESP32 Arduino core, no explicit lib_deps needed."
+    },
+    {
+      "timestamp": "2025-11-14T12:25:00Z",
+      "action": "Analyzed Logger integration pattern",
+      "finding": "All managers use Logger::getInstance().logInfo/logError/logWarning for event logging. Serial output used for debugging. OTAManager should follow same pattern."
+    }
+  ],
+  "solution": {
+    "approach": "Create OTAManager class following established manager pattern. Use ArduinoOTA library with callbacks for progress tracking. Integrate with WiFiManager for connection status. Auto-start OTA server when WiFi connected, block non-critical operations during update, hard reboot on completion.",
+    "design_decisions": {
+      "authentication": "No password required (user requirement)",
+      "reboot_policy": "Hard reboot via ESP.restart() immediately after successful update (user requirement: 'hardest way possible')",
+      "update_blocking": "Expose isUpdating() flag for other tasks to check and skip non-critical operations during OTA update",
+      "progress_reporting": "Log start/end to Logger (INFO level), errors to Logger (ERROR level), progress updates to Serial only (avoid network traffic during OTA)",
+      "wifi_dependency": "begin() loads config and sets up callbacks but does NOT start ArduinoOTA. handle() checks WiFi connection status and calls ArduinoOTA.begin() once when WiFi available, then calls ArduinoOTA.handle() every cycle. This allows OTA to auto-start when WiFi reconnects."
+    },
+    "class_structure": {
+      "header_file": "src/ota_manager.h",
+      "implementation_file": "src/ota_manager.cpp",
+      "public_interface": [
+        "OTAManager() - Constructor, initialize defaults",
+        "void begin(const char* configPath) - Load config from SPIFFS, setup ArduinoOTA callbacks",
+        "void handle() - Check WiFi, start OTA if needed, call ArduinoOTA.handle()",
+        "bool isEnabled() - Return enabled flag from config",
+        "bool isUpdating() - Return true if OTA upload in progress",
+        "uint8_t getProgress() - Return 0-100% upload progress",
+        "String getStatus() - Return status string: idle, starting, updating, complete, error"
+      ],
+      "private_members": [
+        "bool enabled - From config.json ota.enabled",
+        "bool ota_started - True after ArduinoOTA.begin() called",
+        "bool updating - True during upload (set in onStart, cleared in onEnd/onError)",
+        "uint8_t progress - 0-100%, updated in onProgress callback",
+        "String status - Current status string",
+        "uint16_t port - OTA port from config (default 3232)",
+        "char hostname_prefix[20] - Prefix for hostname (default 'hydromatic')"
+      ],
+      "private_methods": [
+        "void loadConfig(const char* configPath) - Parse config.json ota section",
+        "void setupOTA() - Configure ArduinoOTA callbacks and settings",
+        "void logEvent(const char* message) - Log to Logger and Serial",
+        "void logEventF(const char* format, ...) - Printf-style logging"
+      ]
+    },
+    "arduino_ota_callbacks": {
+      "onStart": "Log update type (sketch/filesystem), set updating=true, status='updating', progress=0. Use Logger::getInstance().logInfo() and Serial output.",
+      "onProgress": "Calculate percentage, update progress member. Log to Serial every 10% increment to avoid spam. Format: [OTA] Progress: XX%",
+      "onEnd": "Log completion via Logger::getInstance().logInfo('OTA update complete - REBOOTING'). Print to Serial. delay(100) to flush serial buffer. Call ESP.restart() for hard reboot.",
+      "onError": "Map error code to string (AUTH_ERROR, BEGIN_ERROR, CONNECT_ERROR, RECEIVE_ERROR, END_ERROR). Log via Logger::getInstance().logError(). Set updating=false, status='error'."
+    },
+    "hostname_generation": {
+      "pattern": "hostname_prefix-AABBCC where AABBCC is last 3 bytes of MAC address in hex",
+      "implementation": "uint8_t mac[6]; WiFi.macAddress(mac); snprintf(hostname, sizeof(hostname), \"%s-%02X%02X%02X\", hostname_prefix, mac[3], mac[4], mac[5]);",
+      "example": "hydromatic-A1B2C3",
+      "set_via": "ArduinoOTA.setHostname(hostname) - called in setupOTA()"
+    },
+    "wifi_integration": {
+      "dependency": "Requires WiFi connection to start OTA server",
+      "implementation": "In handle(): extern WiFiManager wifiManager; if (!ota_started && wifiManager.isConnected()) { ArduinoOTA.begin(); ota_started=true; logEvent('OTA server started'); }",
+      "reconnection_handling": "If WiFi disconnects and reconnects, ota_started flag prevents calling begin() multiple times. ArduinoOTA.handle() is safe to call when WiFi disconnected (it's a no-op)."
+    },
+    "files_to_modify": [
+      "src/ota_manager.h - NEW FILE - Class definition",
+      "src/ota_manager.cpp - NEW FILE - Implementation",
+      "src/main.cpp - ADD: #include ota_manager.h, global OTAManager otaManager instance, call otaManager.begin() in setup()",
+      "src/freertos_tasks.cpp - ADD: extern OTAManager otaManager, call otaManager.handle() in mainTask()",
+      "src/freertos_tasks.h - UPDATE: Add comment documenting OTA integration in mainTask() description"
+    ],
+    "implementation_steps": [
+      {
+        "step": 1,
+        "action": "Create src/ota_manager.h",
+        "details": "Define OTAManager class with public interface (constructor, begin, handle, isEnabled, isUpdating, getProgress, getStatus) and private members (enabled, ota_started, updating, progress, status, port, hostname_prefix). Include necessary headers: Arduino.h, ArduinoOTA.h, WiFi.h, ArduinoJson.h, SPIFFS.h. Add include guard."
+      },
+      {
+        "step": 2,
+        "action": "Create src/ota_manager.cpp",
+        "details": "Implement constructor (initialize defaults: enabled=false, ota_started=false, updating=false, progress=0, status='idle', port=3232, hostname_prefix='hydromatic'). Implement loadConfig() to parse /data/config.json ota section. Implement setupOTA() with all 4 callbacks (onStart, onProgress, onEnd, onError) using lambdas that capture 'this' pointer to access class members. Implement begin() to call loadConfig() then setupOTA(). Implement handle() with WiFi check and conditional ArduinoOTA.begin()/handle() calls. Implement getter methods. Implement logging helpers."
+      },
+      {
+        "step": 3,
+        "action": "Integrate into src/main.cpp",
+        "details": "Add #include \"ota_manager.h\" after other manager includes. Add global instance: OTAManager otaManager; after networkLogger declaration. In setup(), after timeManager.begin(), add: otaManager.begin(\"/data/config.json\"); with Serial.println() before/after for debugging."
+      },
+      {
+        "step": 4,
+        "action": "Integrate into src/freertos_tasks.cpp",
+        "details": "Add extern OTAManager otaManager; at top with other extern declarations (around line 604-606). In mainTask() function (around line 515-572), after receiving network commands, add: extern OTAManager otaManager; otaManager.handle(); Add comment explaining OTA is handled in main task."
+      },
+      {
+        "step": 5,
+        "action": "Update src/freertos_tasks.h documentation",
+        "details": "Update mainTask() function comment (line 92-97) to mention OTA handling: 'Handles OTA updates, task management, and system orchestration'"
+      },
+      {
+        "step": 6,
+        "action": "Build and upload via serial",
+        "details": "Run: pio run -t upload. Monitor serial output during boot. Verify OTA initialization messages appear. Check for any compilation errors. If errors, fix and retry."
+      },
+      {
+        "step": 7,
+        "action": "Monitor serial for OTA server start",
+        "details": "Run: ./temp/serial-monitor.py 30. Look for messages: [OTA] Server started, hostname: hydromatic-XXXXXX. Verify hostname format is correct. If not started, check WiFi connection and enabled flag in config."
+      },
+      {
+        "step": 8,
+        "action": "Verify network device appears in IDE",
+        "details": "Open Arduino IDE or PlatformIO device list. Look for network port showing 'hydromatic-XXXXXX at 192.168.X.X'. If not visible, check mDNS initialization in WiFiManager and OTA hostname setup."
+      },
+      {
+        "step": 9,
+        "action": "Test OTA upload",
+        "details": "Make trivial code change (e.g., add Serial.println in setup). Build: pio run. Upload via network: pio run -t upload --upload-port hydromatic-XXXXXX.local OR use Arduino IDE network upload. Monitor serial during upload for progress messages."
+      },
+      {
+        "step": 10,
+        "action": "Verify OTA callbacks and reboot",
+        "details": "During upload, watch serial for: [OTA] Update started, [OTA] Progress: 10%, 20%... 100%, [OTA] Update complete - REBOOTING. Device should hard reboot after upload completes. Verify device boots with new firmware."
+      },
+      {
+        "step": 11,
+        "action": "Test error handling",
+        "details": "Simulate error by disconnecting WiFi during upload (turn off router or change network). Verify error logged and updating flag cleared. Or try uploading sketch too large for partition, verify error logged."
+      },
+      {
+        "step": 12,
+        "action": "Log implementation changes",
+        "details": "Run: ./tasks/scripts/log-change.sh --type feature --component ota --summary 'Implemented OTA Manager with ArduinoOTA integration' --tested y --task task-004"
+      }
+    ],
+    "code_templates": {
+      "setupOTA_callback_example": "ArduinoOTA.onStart([this]() {\n  updating = true;\n  status = \"updating\";\n  progress = 0;\n  String type = (ArduinoOTA.getCommand() == U_FLASH) ? \"sketch\" : \"filesystem\";\n  Logger::getInstance().logInfo(\"OTA update started: %s\", type.c_str());\n  Serial.printf(\"[OTA] Update started: %s\\n\", type.c_str());\n});",
+      "handle_wifi_check": "void OTAManager::handle() {\n  if (!enabled) return;\n  \n  extern WiFiManager wifiManager;\n  bool wifi_connected = wifiManager.isConnected();\n  \n  if (wifi_connected && !ota_started) {\n    ArduinoOTA.begin();\n    ota_started = true;\n    logEvent(\"OTA server started\");\n  }\n  \n  if (ota_started) {\n    ArduinoOTA.handle();\n  }\n}",
+      "error_code_mapping": "switch(error) {\n  case OTA_AUTH_ERROR: err = \"Auth Failed\"; break;\n  case OTA_BEGIN_ERROR: err = \"Begin Failed\"; break;\n  case OTA_CONNECT_ERROR: err = \"Connect Failed\"; break;\n  case OTA_RECEIVE_ERROR: err = \"Receive Failed\"; break;\n  case OTA_END_ERROR: err = \"End Failed\"; break;\n  default: err = \"Unknown Error\"; break;\n}"
+    },
+    "testing_checklist": [
+      "Device boots successfully after OTA integration",
+      "Serial output shows OTA initialization during boot",
+      "Serial shows 'OTA server started' after WiFi connects",
+      "Device appears in Arduino IDE network ports list",
+      "Hostname format is hydromatic-XXXXXX (6 hex digits)",
+      "Network upload succeeds via PlatformIO or Arduino IDE",
+      "Progress messages appear during upload (0%, 10%, 20%... 100%)",
+      "Device hard reboots after successful upload",
+      "New firmware runs after reboot",
+      "Error handling works (disconnect during upload logs error)",
+      "isUpdating() returns true during upload, false otherwise",
+      "getProgress() returns values 0-100 during upload"
+    ],
+    "known_considerations": [
+      "ArduinoOTA.handle() must be called frequently (every 100ms in mainTask is sufficient)",
+      "During OTA update, WiFi must remain stable - brief disconnects will fail the update",
+      "OTA updates take 10-30 seconds depending on sketch size and WiFi speed",
+      "ESP32 has ~1.3MB available for sketch depending on partition scheme (check partitions.csv)",
+      "mDNS must be working for hostname.local resolution (WiFiManager already initializes mDNS)",
+      "OTA server listens on port 3232 by default - ensure no firewall blocks this",
+      "After ESP.restart(), all state is lost - ensure critical data persisted to SPIFFS first",
+      "Progress percentage is calculated as: (progress / total) * 100 in onProgress callback",
+      "Other tasks should check otaManager.isUpdating() and skip heavy operations during update"
+    ]
+  },
+  "verification": {
+    "tested": true,
+    "test_date": "2025-11-14T14:04:07Z",
+    "test_results": "OTA Manager fully implemented and tested. Successfully uploaded firmware via network OTA (192.168.0.3), verified progress callbacks (0-100%), confirmed hard reboot behavior, and tested new firmware running. Device hostname: hydromatic-5E7EF8.local. All acceptance criteria met including ArduinoOTA integration, mDNS hostname setup, error handling, and Logger integration.",
+    "status": "success"
+  },
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "ota",
+    "firmware",
+    "updates",
+    "phase-1",
+    "critical"
+  ]
+}

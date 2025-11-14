@@ -2,7 +2,14 @@
 #include "wifi_manager.h"
 #include "time_manager.h"
 #include "network_logger.h"
+#include "ota_manager.h"
 #include <Arduino.h>
+
+// ========================
+// External Manager References
+// ========================
+
+extern OTAManager otaManager;
 
 // ========================
 // Global Queue Handles
@@ -562,6 +569,9 @@ void mainTask(void* pvParameters) {
       }
       // Add more command handlers here as needed
     }
+
+    // Handle OTA updates (checks WiFi, starts server when available)
+    otaManager.handle();
 
     // Run TimeManager tests every 1000ms
     // unsigned long now = millis();

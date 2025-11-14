@@ -27,7 +27,7 @@
 #define TASK_STACK_WIFI (8 * 1024)      // 8KB for WiFi task
 #define TASK_STACK_TIME (8 * 1024)      // 8KB for time sync task (increased for testing)
 #define TASK_STACK_NETLOG (16 * 1024)   // 16KB for network logging task (increased for debugging stack overflow issues)
-#define TASK_STACK_MAIN (8 * 1024)      // 8KB for main task (increased for testing)
+#define TASK_STACK_MAIN (16 * 1024)     // 16KB for main task (increased for OTA - ArduinoOTA.begin() needs significant stack)
 #define TASK_STACK_SENSOR (4 * 1024)    // 4KB for sensor task
 #define TASK_STACK_CONTROL (4 * 1024)   // 4KB for control task
 

@@ -326,4 +326,61 @@ Scripts handle all file updates. **Agents only call scripts.**
 
 ---
 
+# OTA (Over-The-Air) Updates
+
+**Wireless firmware and SPIFFS updates** - No USB cable required after initial flash.
+
+## Device Network Info
+
+- **Hostname:** `hydromatic-XXXXXX.local` (XXXXXX = last 3 bytes of MAC address)
+- **Port:** 3232
+- **Auto-start:** OTA server starts automatically when WiFi connects
+
+## Upload Firmware via OTA
+
+```bash
+# Build firmware
+pio run
+
+# Upload via IP address
+pio run -t upload --upload-port 192.168.0.X
+
+# Upload via mDNS hostname (preferred)
+pio run -t upload --upload-port hydromatic-XXXXXX.local
+```
+
+## Upload SPIFFS via OTA
+
+```bash
+# Build SPIFFS image
+pio run -t buildfs
+
+# Upload via IP address
+pio run -t uploadfs --upload-port 192.168.0.X
+
+# Upload via mDNS hostname (preferred)
+pio run -t uploadfs --upload-port hydromatic-XXXXXX.local
+```
+
+## Find Device on Network
+
+```bash
+# Test connectivity via mDNS
+ping hydromatic-XXXXXX.local
+
+# Find IP address
+avahi-browse -rt _arduino._tcp
+# or
+arp -a | grep 3c:8a:1f
+```
+
+## OTA Behavior
+
+- **Progress:** Logged to serial every 10% (0%, 10%, 20%, ... 100%)
+- **Completion:** Device hard reboots via ESP.restart()
+- **Errors:** Logged to Logger module and serial
+- **During upload:** Other tasks should check `otaManager.isUpdating()` and skip heavy operations
+
+---
+
 **Last Updated**: 2025-11-14
