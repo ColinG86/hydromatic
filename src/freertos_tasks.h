@@ -15,6 +15,8 @@
 #define TASK_PRIORITY_TIME 2        // Time synchronization task
 #define TASK_PRIORITY_NETLOG 2      // Network logging task
 #define TASK_PRIORITY_MAIN 3        // Main orchestration task
+#define TASK_PRIORITY_DEVICE_MANAGER 2 // Device Manager task
+#define TASK_PRIORITY_CYCLE_MANAGER 2 // Cycle Manager task
 #define TASK_PRIORITY_SENSOR 1      // Sensor reading task (placeholder)
 #define TASK_PRIORITY_CONTROL 1     // Control logic task (placeholder)
 #define TASK_PRIORITY_LOGGING 0     // Logging task (lowest priority)
@@ -28,6 +30,8 @@
 #define TASK_STACK_TIME (8 * 1024)      // 8KB for time sync task (increased for testing)
 #define TASK_STACK_NETLOG (16 * 1024)   // 16KB for network logging task (increased for debugging stack overflow issues)
 #define TASK_STACK_MAIN (16 * 1024)     // 16KB for main task (increased for OTA - ArduinoOTA.begin() needs significant stack)
+#define TASK_STACK_DEVICE_MANAGER (8 * 1024) // 8KB for device manager task
+#define TASK_STACK_CYCLE_MANAGER (8 * 1024) // 8KB for cycle manager task
 #define TASK_STACK_SENSOR (4 * 1024)    // 4KB for sensor task
 #define TASK_STACK_CONTROL (4 * 1024)   // 4KB for control task
 
@@ -87,6 +91,19 @@ void timeTask(void* pvParameters);
  * Runs on core 0
  */
 void networkLoggerTask(void* pvParameters);
+
+/**
+ * Device Manager Task
+ * Manages device states, handles periodic updates (e.g., ADC reads)
+ * and responds to commands.
+ */
+void deviceManagerTask(void* pvParameters);
+
+/**
+ * Cycle Manager Task
+ * Manages automated feeding cycles based on light state and time.
+ */
+void cycleManagerTask(void* pvParameters);
 
 /**
  * Main Orchestration Task

@@ -1,0 +1,32 @@
+{
+  "id": "task-019",
+  "created": "2025-11-15T18:08:37Z",
+  "updated": "2025-11-15T18:08:37Z",
+  "title": "Integration Testing: CycleManager + Scheduler + DeviceManager",
+  "status": "open",
+  "priority": "high",
+  "description": "Comprehensive integration testing of CycleManager behavior with real light state changes from Scheduler. Verify all cycle triggering logic works correctly in production environment.\n\n## DEPENDENCIES\n- task-015 MUST be complete (CycleManager implementation)\n- task-016 MUST be complete (Scheduler implementation)\n- task-014 already complete (DeviceManager)\n\n## PURPOSE\nCycleManager was implemented (task-015) but could not be fully tested without real light state changes from Scheduler. This task performs end-to-end verification of the complete feeding automation system.\n\n## TEST SCENARIOS\n\n### Light-On Mode Tests\n1. **Boundary triggering at configured intervals**\n   - Configure 20min frequency\n   - Verify cycles trigger at :00, :20, :40 each hour\n   - No drift over 24 hour period\n\n2. **Immediate cycle on light-on at boundary**\n   - Schedule light ON at 6:00 AM (20min frequency)\n   - Verify immediate cycle trigger at 6:00\n   - Verify next cycle at 6:20, 6:40, etc.\n\n3. **Wait for next boundary when light-on off-boundary**\n   - Manually turn light ON at 6:05 AM\n   - Verify NO immediate cycle\n   - Verify cycle triggers at 6:20 (next boundary)\n\n4. **Different frequency configurations**\n   - Test 30min frequency (:00, :30)\n   - Test 60min frequency (:00 only)\n   - Verify boundary math is correct\n\n### Light-Off Mode Tests\n1. **Safety feed after max time**\n   - Configure max_time_lights_off = 6 hours\n   - Turn lights OFF\n   - Verify cycle triggers after 6 hours\n   - Verify only ONE cycle (not repeated)\n\n2. **No safety feed if lights come back on**\n   - Turn lights OFF for 5 hours (not yet 6)\n   - Turn lights back ON\n   - Verify NO safety feed\n   - Verify normal boundary mode resumes\n\n### State Transition Tests\n1. **Light ON → OFF transition**\n   - Verify boundary checking stops\n   - Verify safety timer starts\n\n2. **Light OFF → ON transition**\n   - Verify safety timer stops\n   - Verify boundary checking resumes\n   - Verify correct boundary behavior\n\n### Edge Cases\n1. **Multiple rapid light state changes**\n   - Toggle light ON/OFF/ON quickly\n   - Verify no duplicate cycles\n   - Verify correct mode tracking\n\n2. **Config changes during operation**\n   - Change frequency from 20min to 30min\n   - Verify next cycle uses new frequency\n   - Verify no missed/duplicate cycles\n\n3. **Device restart during light-on period**\n   - Restart device at 6:15 (between boundaries)\n   - Verify CycleManager resumes correctly\n   - Verify next cycle at 6:20\n\n## VERIFICATION METHOD\n- Monitor serial logs for cycle trigger messages\n- Verify pump actually turns on/off (check GPIO state)\n- Verify Logger records all cycle events\n- Run tests over 24-48 hour period for stability\n\n## SUCCESS CRITERIA\nAll test scenarios pass without errors or unexpected behavior. Cycle timing is accurate and consistent. No crashes or resource leaks during extended operation.",
+  "assigned_to": null,
+  "acceptance_criteria": [
+    "Light-on boundary triggering works correctly (20/30/60 min intervals)",
+    "Light-on immediate trigger at boundary works",
+    "Light-on waits for next boundary when off-boundary",
+    "Light-off safety feed triggers after max time (6hrs)",
+    "Light-off safety feed does not trigger if lights return early",
+    "Light state transitions handled correctly (ON→OFF, OFF→ON)",
+    "No duplicate cycles on rapid state changes",
+    "System stable over 24+ hour test period",
+    "All cycle events properly logged"
+  ],
+  "investigation": [],
+  "solution": null,
+  "verification": null,
+  "blockers": [],
+  "related_tasks": [],
+  "tags": [
+    "integration-test",
+    "cycle-manager",
+    "scheduler",
+    "testing"
+  ]
+}

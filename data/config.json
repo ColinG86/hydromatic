@@ -36,5 +36,10 @@
     "ack_timeout_ms": 2000,
     "heartbeat_interval_ms": 1000,
     "retry_backoff_ms": [5000, 10000, 30000]
+  },
+  "cycle_manager": {
+    "enabled": true,
+    "frequency_minutes": 20,
+    "max_time_lights_off_hours": 6
   }
 }

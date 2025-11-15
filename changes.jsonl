@@ -486,3 +486,68 @@
   "status": "completed",
   "task": "task-004"
 }
+{
+  "timestamp": "2025-11-14T17:53:07Z",
+  "type": "feature",
+  "component": "device-manager",
+  "summary": "Implement Device Manager and add software-level tests",
+  "files": [
+    "src/device_manager.h",
+    "src/device_manager.cpp",
+    "data/device_config.json",
+    "src/freertos_tasks.h",
+    "src/freertos_tasks.cpp",
+    "src/main.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": true,
+  "status": "completed",
+  "task": "task-014"
+}
+{
+  "timestamp": "2025-11-14T18:44:50Z",
+  "type": "doc",
+  "component": "tasks",
+  "summary": "Updated task-014 with solution and verification report",
+  "files": [
+    "tasks/open/task-014.json"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": false,
+  "status": "completed",
+  "task": "task-014"
+}
+{
+  "timestamp": "2025-11-15T09:41:35Z",
+  "type": "fix",
+  "component": "SPIFFS, DeviceManager, CycleManager",
+  "summary": "Fixed SPIFFS path issue - removed /data prefix, all configs now at root level",
+  "files": [
+    "/home/colin/projects/hydromatic/src/device_manager.cpp",
+    "/home/colin/projects/hydromatic/src/device_manager.h",
+    "/home/colin/projects/hydromatic/src/main.cpp",
+    "/home/colin/projects/hydromatic/src/freertos_tasks.cpp",
+    "/home/colin/projects/hydromatic/data/device_config.json"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": true,
+  "status": "completed",
+  "task": "task-015"
+}
+{
+  "timestamp": "2025-11-15T09:42:41Z",
+  "type": "fix",
+  "component": "CycleManager tests",
+  "summary": "Disabled continuous test execution to prevent stack overflow - tests should run manually during development only",
+  "files": [
+    "/home/colin/projects/hydromatic/src/freertos_tasks.cpp"
+  ],
+  "agent": "claude",
+  "tags": [],
+  "tested": true,
+  "status": "completed",
+  "task": "task-015"
+}

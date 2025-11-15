@@ -6,6 +6,8 @@
 #include "network_logger.h"
 #include "ota_manager.h"
 #include "freertos_tasks.h"
+#include "device_manager.h" // Include DeviceManager header
+#include "cycle_manager.h" // Include CycleManager header
 
 // ========================
 // Global Manager Instances
@@ -14,6 +16,7 @@ WiFiManager wifiManager;
 TimeManager timeManager;
 NetworkLogger networkLogger;
 OTAManager otaManager;
+// DeviceManager deviceManager; // Global instance of DeviceManager - REMOVED
 
 // ========================
 // Setup - Initialize Hardware and FreeRTOS
@@ -39,18 +42,28 @@ void setup() {
 
   // Initialize WiFi Manager with config from SPIFFS
   Serial.println("[SETUP] Initializing WiFiManager...");
-  wifiManager.begin("/data/config.json");
+  wifiManager.begin("/config.json");
   Serial.println("[SETUP] WiFiManager initialized");
 
   // Initialize Time Manager with config from SPIFFS
   Serial.println("[SETUP] Initializing TimeManager...");
-  timeManager.begin("/data/config.json");
+  timeManager.begin("/config.json");
   Serial.println("[SETUP] TimeManager initialized");
 
   // Initialize OTA Manager with config from SPIFFS
   Serial.println("[SETUP] Initializing OTAManager...");
-  otaManager.begin("/data/config.json");
+  otaManager.begin("/config.json");
   Serial.println("[SETUP] OTAManager initialized");
+
+  // Initialize Device Manager with config from SPIFFS
+  Serial.println("[SETUP] Initializing DeviceManager...");
+  DeviceManager::getInstance().begin("/device_config.json"); // Get instance and call begin
+  Serial.println("[SETUP] DeviceManager initialized");
+
+  // Initialize Cycle Manager
+  Serial.println("[SETUP] Initializing CycleManager...");
+  CycleManager::getInstance()->setup("/config.json");
+  Serial.println("[SETUP] CycleManager initialized");
 
   // Initialize FreeRTOS infrastructure (creates tasks and queues)
   // NOTE: NetworkLogger.begin() is called inside initializeFreeRTOS()
